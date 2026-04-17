@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Invesmate Offline Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+
+:root{--bg:#080b12;--s1:#0f1220;--s2:#161a2c;--s3:#1c2138;--border:rgba(255,255,255,0.07);--a1:#4f8ef7;--a2:#f7c948;--a3:#4fce8f;--a4:#f76f4f;--a5:#b44fe7;--a6:#4fd8f7;--t1:#e8eaf2;--t2:#8a90aa;--t3:#555d7a;--glow:rgba(79,142,247,0.15)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;font-size:14px}
+
+/* HEADER */
+.hdr{background:linear-gradient(135deg,#0b1120,#0f1220,#0b1528);border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.hdr-left{display:flex;align-items:center;gap:12px}
+.logo{width:40px;height:40px;background:linear-gradient(135deg,var(--a1),var(--a5));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.hdr-title h1{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;letter-spacing:-.3px}
+.hdr-title p{font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
+.hdr-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.badge-live{display:flex;align-items:center;gap:5px;background:rgba(79,206,143,.12);border:1px solid rgba(79,206,143,.3);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--a3);font-weight:600}
+.dot{width:6px;height:6px;background:var(--a3);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
+.hdr-stat{font-size:11px;color:var(--t3);background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:4px 10px}
+
+/* FILTERS */
+.fbar{background:var(--s1);border-bottom:1px solid var(--border);padding:12px 28px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.fg{display:flex;align-items:center;gap:7px}
+.fl{font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+select,input[type=date]{background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--t1);padding:6px 10px;font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;outline:none;transition:border-color .2s;min-width:130px}
+select:hover,input[type=date]:hover{border-color:var(--a1)}
+select:focus,input[type=date]:focus{border-color:var(--a1);box-shadow:0 0 0 3px var(--glow)}
+
+/* COURSE TABS (filter style) */
+.course-tabs{display:flex;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:3px;gap:2px}
+.ctab{padding:5px 14px;border-radius:6px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:var(--t3);background:transparent;transition:all .18s;white-space:nowrap}
+.ctab.active{color:#fff}
+.ctab[data-c="ALL"].active{background:#4a5068}
+.ctab[data-c="BCMB"].active{background:var(--a1)}
+.ctab[data-c="INSIGNIA"].active{background:var(--a5)}
+.ctab[data-c="OFFLINE"].active{background:var(--a4)}
+.ctab:hover:not(.active){color:var(--t1);background:rgba(255,255,255,.05)}
+
+/* MODE TOGGLE */
+.mode-tog{display:flex;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:3px;gap:2px}
+.mtab{padding:5px 12px;border-radius:6px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:var(--t3);background:transparent;transition:all .18s;white-space:nowrap}
+.mtab.active{background:var(--a3);color:#fff}
+.mtab:hover:not(.active){color:var(--t1);background:rgba(255,255,255,.05)}
+
+.btn{padding:6px 16px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;transition:all .2s}
+.btn-p{background:linear-gradient(135deg,var(--a1),#3a7de0);color:#fff}
+.btn-p:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(79,142,247,.4)}
+.btn-g{background:var(--s2);color:var(--t2);border:1px solid var(--border)}
+.btn-g:hover{color:var(--t1)}
+.fcount{font-size:11px;color:var(--t3);margin-left:auto;white-space:nowrap}
+
+/* BANNER */
+.banner{padding:8px 28px;font-size:12px;font-weight:600;display:none;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+.banner.bcmb{background:rgba(79,142,247,.08);color:var(--a1);display:flex}
+.banner.insignia{background:rgba(180,79,231,.08);color:var(--a5);display:flex}
+.banner.offline{background:rgba(247,111,79,.08);color:var(--a4);display:flex}
+
+/* MAIN */
+.main{padding:20px 28px;max-width:1700px}
+
+/* NAV TABS */
+.ntabs{display:flex;gap:3px;margin-bottom:20px;background:var(--s1);border-radius:10px;padding:4px;width:fit-content;overflow-x:auto}
+.ntab{padding:7px 18px;border-radius:7px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:var(--t3);background:transparent;transition:all .2s;white-space:nowrap}
+.ntab.active{background:var(--a1);color:#fff}
+.ntab:hover:not(.active){color:var(--t1);background:var(--s2)}
+.tab-content{display:none}.tab-content.active{display:block}
+
+/* SECTION HEADER */
+.sh{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.sh::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:14px;margin-bottom:20px}
+.kpi{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:18px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--kc,var(--a1))}
+.ki{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:10px;background:var(--kib,rgba(79,142,247,.12))}
+.kl{font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.kv{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--t1);letter-spacing:-1px;line-height:1}
+.ks{font-size:11px;color:var(--t3);margin-top:5px}
+
+/* CHARTS */
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+.cgrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:18px}
+.cfull{grid-column:1/-1}
+.cc{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:18px}
+.cc-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px}
+.cc-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--t1);margin-bottom:2px}
+.cc-sub{font-size:11px;color:var(--t3)}
+.cc-badge{background:rgba(79,142,247,.12);border:1px solid rgba(79,142,247,.2);color:var(--a1);padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+canvas{max-height:280px}
+
+/* FUNNEL */
+.funnel-step{display:flex;align-items:center;margin-bottom:10px;gap:12px}
+.flabel{min-width:160px;font-size:12px;color:var(--t2);font-weight:600}
+.fbar-wrap{flex:1;position:relative}
+.funnel-bar{height:46px;border-radius:8px;display:flex;align-items:center;padding:0 14px;font-weight:700;font-size:13px;color:#fff;position:relative;overflow:hidden;transition:width .8s ease}
+.funnel-bar::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(90deg,rgba(255,255,255,.1),transparent)}
+.fmeta{min-width:120px;text-align:right}
+.fmeta .fv{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--t1)}
+.fmeta .fc{font-size:10px;color:var(--t3);margin-top:1px}
+
+/* TABLE */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;color:var(--t2);white-space:nowrap}
+tr:hover td{background:rgba(255,255,255,.02);color:var(--t1)}
+
+/* BADGES */
+.bdg{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700}
+.bg{background:rgba(79,206,143,.12);color:var(--a3)}
+.by{background:rgba(247,201,72,.12);color:var(--a2)}
+.br{background:rgba(247,111,79,.12);color:var(--a4)}
+.bb{background:rgba(79,142,247,.12);color:var(--a1)}
+.bp{background:rgba(180,79,231,.12);color:var(--a5)}
+.bc{background:rgba(79,216,247,.12);color:var(--a6)}
+
+/* RANK */
+.rnk{width:20px;height:20px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;margin-right:6px}
+.r1{background:linear-gradient(135deg,#f7c948,#e6a800);color:#000}
+.r2{background:rgba(200,200,220,.15);color:#aaa}
+.r3{background:rgba(200,120,80,.2);color:#c87}
+
+/* MINI BAR */
+.mb-wrap{display:flex;align-items:center;gap:6px;margin-top:3px}
+.mb{height:3px;background:var(--border);border-radius:2px;flex:1;overflow:hidden}
+.mbf{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--a1),var(--a5));transition:width .8s ease}
+
+/* INSIGHT CARD */
+.igrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+.icard{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:18px}
+.icard h3{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:7px}
+.iitem{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.iitem:last-child{border-bottom:none}
+.iname{font-size:12px;color:var(--t2)}
+.ival{font-size:12px;font-weight:700;color:var(--t1)}
+.reco{background:linear-gradient(135deg,rgba(79,142,247,.07),rgba(180,79,231,.07));border:1px solid rgba(79,142,247,.2);border-radius:12px;padding:18px;margin-bottom:18px}
+.reco h3{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--a1);margin-bottom:12px;display:flex;align-items:center;gap:7px}
+.ritem{display:flex;gap:10px;margin-bottom:9px;align-items:flex-start}
+.ricon{font-size:15px;margin-top:1px}
+.rtxt{font-size:12px;color:var(--t2);line-height:1.55}
+.rtxt strong{color:var(--t1)}
+
+/* COURSE COMPARISON */
+.comp-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px}
+.comp-card{border-radius:12px;padding:18px;border:1px solid}
+.comp-bcmb{background:rgba(79,142,247,.07);border-color:rgba(79,142,247,.2)}
+.comp-insignia{background:rgba(180,79,231,.07);border-color:rgba(180,79,231,.2)}
+.comp-offline{background:rgba(247,111,79,.07);border-color:rgba(247,111,79,.2)}
+.comp-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;margin-bottom:12px}
+.comp-bcmb .comp-title{color:var(--a1)}
+.comp-insignia .comp-title{color:var(--a5)}
+.comp-offline .comp-title{color:var(--a4)}
+.comp-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px}
+.comp-row:last-child{border-bottom:none}
+.comp-row .label{color:var(--t3)}
+.comp-row .val{font-weight:700;color:var(--t1)}
+
+/* STAT ROW */
+.srow{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.spill{background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:5px 12px;font-size:11px;color:var(--t2)}
+.spill strong{color:var(--t1);font-weight:700}
+
+@media(max-width:900px){.cgrid,.cgrid3,.igrid,.comp-grid{grid-template-columns:1fr}.main{padding:14px}.fbar{padding:10px 14px}.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div class="hdr-left">
+    <div class="logo" style="background:linear-gradient(135deg,#f76f4f,#b44fe7)">🏢</div>
+    <div class="hdr-title"><h1>Invesmate Offline Dashboard</h1><p>Seminar Operations · Attendee Intelligence · Sales</p></div>
+  </div>
+  <div class="hdr-right">
+    <div class="badge-live"><div class="dot"></div>Live Data</div>
+    <div class="hdr-stat">42 Seminars</div><div class="hdr-stat">38 Locations</div><div class="hdr-stat">1,430 Students</div>
+  </div>
+</div>
+<div class="fbar">
+  <select id="fTrainer" style="display:none"></select>
+  <div class="fg"><span class="fl">📆 Year</span>
+    <select id="fYear" onchange="renderOffline()">
+      <option value="">All Years</option>
+      <option value="2025">2025</option><option value="2026">2026</option>
+    </select>
+  </div>
+  <div class="fg"><span class="fl">📅 From</span>
+    <input type="date" id="dtFrom" value="2025-05-01">
+    <span style="color:var(--t3);font-size:11px">–</span>
+    <input type="date" id="dtTo" value="2026-12-31">
+  </div>
+  <div class="fg"><span class="fl">📍 Location</span>
+    <select id="offLocFilter" onchange="renderOffline()"><option value="">All Locations</option></select>
+  </div>
+  <div class="fg"><span class="fl">🎓 Trainer</span>
+    <select id="offTrainerFilter" onchange="renderOffline()"><option value="">All Trainers</option></select>
+  </div>
+  <div class="fg"><span class="fl">📊 Sort By</span>
+    <select id="offSortBy" onchange="renderOffline()">
+      <option value="date">Date</option>
+      <option value="surplus">Surplus</option>
+      <option value="actual_revenue">Revenue</option>
+      <option value="attended">Attended</option>
+      <option value="sb_seminar">Seat Booked</option>
+    </select>
+  </div>
+  <button class="btn btn-g" onclick="document.getElementById('fYear').value='';document.getElementById('dtFrom').value='2025-05-01';document.getElementById('dtTo').value='2026-12-31';document.getElementById('offLocFilter').value='';document.getElementById('offTrainerFilter').value='';renderOffline();">Reset</button>
+  <div class="fcount" id="fcount"></div>
+</div>
+<div class="banner" id="banner"></div>
+<div class="main">
+  <div class="ntabs"><button class="ntab active" onclick="switchTab('offline',this)">🏢 Offline Seminars</button></div>
+<div class="tab-content active" id="tab-offline">
+
+    <!-- ── SECTION 1: Seminar Operations ───────────────────── -->
+    <div class="sh">🏢 Seminar Operations <span class="sh-accent" id="offSemCount"></span></div>
+    <div class="kpi-grid" id="offKpis"></div>
+
+    <div class="cgrid">
+      <div class="cc">
+        <div class="cc-hdr"><div><div class="cc-title">Revenue vs Expenses per Seminar</div><div class="cc-sub">Actual revenue · Expenses · Total revenue</div></div><div class="cc-badge" id="offRevBadge">—</div></div>
+        <canvas id="offRevChart"></canvas>
+      </div>
+      <div class="cc">
+        <div class="cc-hdr"><div><div class="cc-title">Surplus / Deficit per Seminar</div><div class="cc-sub">Green = profitable · Red = loss-making</div></div><div class="cc-badge" id="offROIBadge">—</div></div>
+        <canvas id="offROIChart"></canvas>
+      </div>
+    </div>
+
+    <div class="cgrid">
+      <div class="cc">
+        <div class="cc-hdr"><div><div class="cc-title">Monthly Rollout</div><div class="cc-sub">Seat bookings · Attendees · Events per month</div></div></div>
+        <canvas id="offMonthChart"></canvas>
+      </div>
+      <div class="cc">
+        <div class="cc-hdr"><div><div class="cc-title">Attendance &amp; SB Rate per Seminar</div><div class="cc-sub">% attended of targeted · % seat booked of attended</div></div></div>
+        <canvas id="offFunnelChart"></canvas>
+      </div>
+    </div>
+
+    <!-- ── SECTION 2: Attendee Intelligence (merged, seamless) ── -->
+    <div class="sh" style="margin-top:4px">👥 Attendee Intelligence <span class="sh-accent" id="offAttCount"></span></div>
+    <div class="kpi-grid" id="attKpis"></div>
+
+    <div class="cgrid">
+      <div class="cc">
+        <div class="cc-hdr"><div><div class="cc-title">Revenue &amp; Outstanding by Location</div><div class="cc-sub">Top 20 locations — collected vs due</div></div><div class="cc-badge" id="offLocBadge">—</div></div>
+        <canvas id="offLocRevChart"></canvas>
+      </div>
+      <div class="cc">
+        <div class="cc-hdr"><div><div class="cc-title">Course Enrollment Mix</div><div class="cc-sub">Which courses offline students enrolled in</div></div></div>
+        <canvas id="offCourseChart"></canvas>
+      </div>
+    </div>
+
+    <!-- ── SECTION 3: Sales & Full Detail ── -->
+    <div class="sh" style="margin-top:4px">📊 Sales Performance &amp; Full Detail</div>
+
+    <div class="cc cfull">
+      <div class="cc-hdr">
+        <div><div class="cc-title">🏆 Sales Rep Leaderboard</div><div class="cc-sub">Revenue collected · Active students · Avg deal size</div></div>
+        <div class="cc-badge" id="offSalesBadge">—</div>
+      </div>
+      <div class="tw" id="offSalesTable"></div>
+    </div>
+
+    <div class="cc cfull">
+      <div class="cc-hdr">
+        <div><div class="cc-title">All Seminars — Complete Detail</div><div class="cc-sub">Date · Location · Trainer · Attendance · SB breakdown · Expenses · Revenue · ROI</div></div>
+        <div id="offTableFilters" style="display:flex;gap:6px;align-items:center">
+          <select id="offLocFilter" onchange="renderOffline()" style="font-size:10px;padding:3px 7px;min-width:90px;background:var(--s3);border:1px solid var(--border);border-radius:6px;color:var(--t2)">
+            <option value="">All Locations</option>
+          </select>
+          <select id="offTrainerFilter" onchange="renderOffline()" style="font-size:10px;padding:3px 7px;min-width:90px;background:var(--s3);border:1px solid var(--border);border-radius:6px;color:var(--t2)">
+            <option value="">All Trainers</option>
+          </select>
+          <select id="offSortBy" onchange="renderOffline()" style="font-size:10px;padding:3px 7px;min-width:90px;background:var(--s3);border:1px solid var(--border);border-radius:6px;color:var(--t2)">
+            <option value="date">Sort: Date</option>
+            <option value="surplus">Sort: Surplus</option>
+            <option value="actual_revenue">Sort: Revenue</option>
+            <option value="attended">Sort: Attended</option>
+            <option value="sb_seminar">Sort: SB</option>
+          </select>
+        </div>
+      </div>
+      <div class="tw" id="offTable"></div>
+    </div>
+
+  </div>
+
+  <!-- INSIGHTS -->
+</div>
+<script>
+// @@DATA@@
+
+let filtered = [...ALL_DATA];
+let currentCourse = 'ALL';
+let currentMode = 'all';
+let charts = {};
+const fmt = n => {
+  if(n===0||!n) return '0';
+  const abs = Math.abs(n);
+  const s = n<0?'-':'';
+  if(abs>=1e7) return s+(abs/1e7).toFixed(2)+'Cr';
+  if(abs>=1e5) return s+(abs/1e5).toFixed(2)+'L';
+  if(abs>=1e3) return s+(abs/1e3).toFixed(1)+'K';
+  return s+Math.round(abs).toLocaleString();
+};
+const fmtN = n => {
+  if(!n) return '0';
+  const abs = Math.abs(n);
+  const s = n<0?'-':'';
+  if(abs>=1e7) return s+(abs/1e7).toFixed(2)+'Cr';
+  if(abs>=1e5) return s+(abs/1e5).toFixed(2)+'L';
+  if(abs>=1e3) return s+(abs/1e3).toFixed(1)+'K';
+  return s+Math.round(abs).toLocaleString();
+};
+const pct = (a,b) => b ? ((a/b)*100).toFixed(1)+'%' : 'N/A';
+const sum = (arr,k) => arr.reduce((s,r)=>s+(r[k]||0),0);
+const COLS = ['#4f8ef7','#4fce8f','#f7c948','#f76f4f','#b44fe7','#4fd8f7','#f74fb8','#8ef74f','#f79e4f','#4f4ff7'];
+
+function dc(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+function mc(id,cfg){
+  dc(id);
+  const ctx=document.getElementById(id);
+  if(!ctx)return;
+  charts[id]=new Chart(ctx,{...cfg,options:{
+    ...cfg.options,responsive:true,maintainAspectRatio:true,
+    plugins:{...(cfg.options?.plugins||{}),legend:{labels:{color:'#8a90aa',font:{size:11}},...(cfg.options?.plugins?.legend||{})}},
+    scales:cfg.options?.scales?Object.fromEntries(Object.entries(cfg.options.scales).map(([k,v])=>[k,{...v,
+      grid:{color:'rgba(255,255,255,0.05)',...(v.grid||{})},
+      ticks:{color:'#8a90aa',font:{size:10},...(v.ticks||{})}}])):undefined
+  }});
+  return charts[id];
+}
+function extractTrainers(data) {
+  const names = new Set();
+  data.forEach(r => {
+    String(r.trainer).split(',').forEach(n => {
+      const clean = n.replace(/\n/g,' ').trim();
+      if (clean.length > 1) names.add(clean);
+    });
+  });
+  return [...names].sort();
+}
+function rebuildTrainerDropdown(pool) {
+  const sel = document.getElementById('fTrainer');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">All Trainers</option>';
+  extractTrainers(pool).forEach(t => {
+    const o = document.createElement('option');
+    o.value = t;
+    o.textContent = t.length > 45 ? t.slice(0,45)+'…' : t;
+    sel.appendChild(o);
+  });
+  if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+}
+function getMonthly(data){
+  const m={};
+  (data||filtered).forEach(r=>{
+    const k=r.yearMonth;
+    if(!m[k])m[k]={ym:k,targeted:0,registered:0,over30:0,seatBooked:0,joined:0,revenue:0,count:0};
+    m[k].targeted+=r.targeted||0; m[k].registered+=r.registered||0;
+    m[k].over30+=r.over30||0; m[k].seatBooked+=r.seatBooked||0;
+    m[k].joined+=r.joined||0; m[k].revenue+=r.revenue||0; m[k].count++;
+  });
+  return Object.values(m).sort((a,b)=>a.ym.localeCompare(b.ym));
+}
+function fmtYM(ym){
+  const [y,mo]=ym.split('-');
+  const mn=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return mn[+mo]+"'"+y.slice(2);
+}
+function getTrainerStats(data){
+  const m={};
+  (data||filtered).forEach(r=>{
+    const t=r.trainer;
+    if(!m[t])m[t]={trainer:t,webinars:0,targeted:0,registered:0,over30:0,seatBooked:0,revenue:0,courses:new Set()};
+    m[t].webinars++; m[t].targeted+=r.targeted||0; m[t].registered+=r.registered||0;
+    m[t].over30+=r.over30||0; m[t].seatBooked+=r.seatBooked||0; m[t].revenue+=r.revenue||0;
+    m[t].courses.add(r.course);
+  });
+  return Object.values(m).map(t=>({...t,courses:[...t.courses].join(',')})).sort((a,b)=>b.seatBooked-a.seatBooked);
+}
+
+function populateOfflineFilters(){
+  const locSel=document.getElementById('offLocFilter');
+  const trSel=document.getElementById('offTrainerFilter');
+  if(locSel && locSel.options.length===1){
+    [...new Set(SEMINAR_DATA.map(r=>r.location))].sort().forEach(l=>{
+      const o=document.createElement('option');o.value=l;o.textContent=l;locSel.appendChild(o);
+    });
+  }
+  if(trSel && trSel.options.length===1){
+    const t=new Set();
+    SEMINAR_DATA.forEach(r=>r.trainer.split(',').forEach(x=>{const n=x.trim();if(n)t.add(n);}));
+    [...t].sort().forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;trSel.appendChild(o);});
+  }
+}
+
+function renderOffline(){
+  // ── Apply date/year/trainer/location filters to SEMINAR_DATA ───────────────
+  const fromVal = document.getElementById('dtFrom').value;
+  const toVal   = document.getElementById('dtTo').value;
+  const year    = document.getElementById('fYear').value;
+  const locF    = (document.getElementById('offLocFilter')?.value||'').toLowerCase();
+  const trF     = (document.getElementById('offTrainerFilter')?.value||'').toLowerCase();
+  const sortKey = document.getElementById('offSortBy')?.value||'date';
+
+  let d = SEMINAR_DATA.filter(r => {
+    if(year && (r.date < year+'-01-01' || r.date > year+'-12-31')) return false;
+    if(!year){
+      if(fromVal && r.date < fromVal) return false;
+      if(toVal   && r.date > toVal)   return false;
+    }
+    if(locF && !r.location.toLowerCase().includes(locF)) return false;
+    if(trF  && !r.trainer.toLowerCase().includes(trF))   return false;
+    return true;
+  });
+
+  // Sort
+  if(sortKey==='date') d = [...d].sort((a,b)=>a.date.localeCompare(b.date));
+  else d = [...d].sort((a,b)=>b[sortKey]-a[sortKey]);
+
+  // Populate inline dropdowns once
+  const locSel = document.getElementById('offLocFilter');
+  const trSel  = document.getElementById('offTrainerFilter');
+  if(locSel.options.length===1){
+    [...new Set(SEMINAR_DATA.map(r=>r.location))].sort().forEach(l=>{
+      const o=document.createElement('option'); o.value=l; o.textContent=l; locSel.appendChild(o);
+    });
+  }
+  if(trSel.options.length===1){
+    const tnames=new Set();
+    SEMINAR_DATA.forEach(r=>r.trainer.split(',').forEach(t=>{const c=t.trim();if(c)tnames.add(c);}));
+    [...tnames].sort().forEach(t=>{
+      const o=document.createElement('option'); o.value=t; o.textContent=t; trSel.appendChild(o);
+    });
+  }
+
+  // ── AGGREGATES ─────────────────────────────────────────────────────────────
+  const totalTgt    = d.reduce((s,r)=>s+r.targeted,0);
+  const totalAtt    = d.reduce((s,r)=>s+r.attended,0);
+  const totalSB     = d.reduce((s,r)=>s+r.sb_seminar,0);
+  const totalSBMorn = d.reduce((s,r)=>s+r.sb_morning,0);
+  const totalSBEve  = d.reduce((s,r)=>s+r.sb_evening,0);
+  const totalSBNW   = d.reduce((s,r)=>s+r.sb_non_webinar,0);
+  const totalExp    = d.reduce((s,r)=>s+r.expenses,0);
+  const totalExpRev = d.reduce((s,r)=>s+(r.expected_revenue||0),0);
+  const totalActRev = d.reduce((s,r)=>s+r.actual_revenue,0);
+  const totalTotRev = d.reduce((s,r)=>s+r.total_revenue,0);
+  const totalSurp   = d.reduce((s,r)=>s+r.surplus,0);
+  const profitable  = d.filter(r=>r.surplus>0).length;
+  const lossEvents  = d.filter(r=>r.surplus<=0).length;
+  const avgAtt      = d.length ? Math.round(totalAtt/d.length) : 0;
+  const attPct      = totalTgt ? (totalAtt/totalTgt*100).toFixed(1) : '0';
+  const sbPct       = totalAtt ? (totalSB/totalAtt*100).toFixed(1) : '0';
+  const roi         = totalExp>0 ? ((totalActRev-totalExp)/totalExp*100).toFixed(1) : 0;
+  const best        = d.length ? [...d].sort((a,b)=>b.surplus-a.surplus)[0] : null;
+  const worst       = d.length ? [...d].sort((a,b)=>a.surplus-b.surplus)[0] : null;
+  const uniqLocs    = new Set(d.map(r=>r.location)).size;
+
+  // Section count labels
+  const sc = document.getElementById('offSemCount');
+  if(sc) sc.textContent = '· '+d.length+' seminars · '+uniqLocs+' locations';
+  const ac = document.getElementById('offAttCount');
+  if(ac){
+    const AS=ATTENDEE_SUMMARY;
+    ac.textContent = '· '+fmtN(AS.total_students)+' students · '+fmt(AS.total_revenue)+' collected';
+  }
+
+  // Revenue badges
+  const rb = document.getElementById('offRevBadge');
+  if(rb) rb.textContent = fmt(totalActRev);
+  const roib = document.getElementById('offROIBadge');
+  if(roib) roib.textContent = roi+'% ROI';
+  const sb2 = document.getElementById('offSalesBadge');
+  if(sb2) sb2.textContent = fmtN(Object.keys(SALES_REP_STATS).length)+' reps';
+  const lb = document.getElementById('offLocBadge');
+  if(lb) lb.textContent = fmtN(Object.keys(LOCATION_STATS_ATT).length)+' locations';
+
+  // ── SEMINAR KPIs ───────────────────────────────────────────────────────────
+  document.getElementById('offKpis').innerHTML = [
+    {l:'Seminars',          v:d.length,               s:uniqLocs+' locations',                ic:'🏢', c:'var(--a4)', ib:'rgba(247,111,79,.1)'},
+    {l:'Total Targeted',    v:fmtN(totalTgt),          s:'Audience invited',                   ic:'👥', c:'var(--a1)', ib:'rgba(79,142,247,.1)'},
+    {l:'Total Attended',    v:fmtN(totalAtt),          s:attPct+'% of targeted',               ic:'✅', c:'var(--a3)', ib:'rgba(79,206,143,.1)'},
+    {l:'Day-of SB',         v:fmtN(totalSB),           s:sbPct+'% of attended',                ic:'🎟', c:'var(--a5)', ib:'rgba(180,79,231,.1)'},
+    {l:'Morning SB',        v:fmtN(totalSBMorn),       s:totalSB?(totalSBMorn/totalSB*100).toFixed(0)+'% of SB':'—', ic:'🌅', c:'var(--a2)', ib:'rgba(247,201,72,.1)'},
+    {l:'Evening SB',        v:fmtN(totalSBEve),        s:totalSB?(totalSBEve/totalSB*100).toFixed(0)+'% of SB':'—',  ic:'🌆', c:'var(--a5)', ib:'rgba(180,79,231,.1)'},
+    {l:'Non-Webinar SB',    v:fmtN(totalSBNW),         s:'Walk-in conversions',                ic:'🚶', c:'var(--a6)', ib:'rgba(79,216,247,.1)'},
+    {l:'Expected Revenue',  v:fmt(totalExpRev),         s:'Projected earnings',                 ic:'📋', c:'var(--t2)', ib:'rgba(138,144,170,.08)'},
+    {l:'Actual Revenue',    v:fmt(totalActRev),         s:'Day-of collections',                 ic:'💰', c:'var(--a2)', ib:'rgba(247,201,72,.1)'},
+    {l:'Total Revenue',     v:fmt(totalTotRev),         s:'Incl. post-event',                   ic:'📈', c:'var(--a3)', ib:'rgba(79,206,143,.1)'},
+    {l:'Total Expenses',    v:fmt(totalExp),            s:'All seminars',                       ic:'💸', c:'var(--a4)', ib:'rgba(247,111,79,.1)'},
+    {l:'Net Surplus',       v:fmt(totalSurp),           s:totalSurp>=0?'Profitable':'Net Loss', ic:'📊', c:totalSurp>=0?'var(--a3)':'var(--a4)', ib:'rgba(79,206,143,.1)'},
+    {l:'Overall ROI',       v:roi+'%',                  s:'Actual Rev / Expenses',              ic:'📉', c:'var(--a3)', ib:'rgba(79,206,143,.1)'},
+    {l:'Profitable',        v:profitable+'/'+d.length, s:lossEvents+' loss events',            ic:'🎯', c:'var(--a3)', ib:'rgba(79,206,143,.1)'},
+    {l:'Best Surplus',      v:best?fmt(best.surplus):'—', s:best?best.location:'',             ic:'🏆', c:'var(--a2)', ib:'rgba(247,201,72,.1)'},
+    {l:'Worst Loss',        v:worst?fmt(worst.surplus):'—', s:worst?worst.location:'',         ic:'⚠', c:'var(--a4)', ib:'rgba(247,111,79,.1)'},
+    {l:'Avg Attendance',    v:avgAtt,                   s:'Per seminar',                        ic:'👤', c:'var(--a1)', ib:'rgba(79,142,247,.1)'},
+    {l:'Avg SB/Seminar',    v:d.length?(totalSB/d.length).toFixed(1):0, s:'Seat bookings per event', ic:'🎫', c:'var(--a5)', ib:'rgba(180,79,231,.1)'},
+  ].map(k=>`<div class="kpi" style="--kc:${k.c};--kib:${k.ib}"><div class="ki">${k.ic}</div><div class="kl">${k.l}</div><div class="kv">${k.v}</div><div class="ks">${k.s}</div></div>`).join('');
+
+  // Short labels for charts
+  const locs = d.map(r => r.location.length>11 ? r.location.split(' ').map(w=>w[0]).join('') : r.location.split(' ').slice(0,2).join(' '));
+
+  // ── REVENUE vs EXPENSES ────────────────────────────────────────────────────
+  mc('offRevChart',{type:'bar',data:{
+    labels: locs,
+    datasets:[
+      {label:'Expenses',   data:d.map(r=>r.expenses),        backgroundColor:'rgba(247,111,79,.65)', borderRadius:3},
+      {label:'Actual Rev', data:d.map(r=>r.actual_revenue),  backgroundColor:'rgba(79,206,143,.65)', borderRadius:3},
+      {label:'Total Rev',  data:d.map(r=>r.total_revenue),   backgroundColor:'rgba(79,142,247,.4)',  borderRadius:3},
+    ]
+  },options:{plugins:{legend:{position:'bottom'}},scales:{x:{ticks:{font:{size:9}}},y:{beginAtZero:true,ticks:{callback:v=>fmt(v)}}}}});
+
+  // ── SURPLUS / DEFICIT ──────────────────────────────────────────────────────
+  mc('offROIChart',{type:'bar',data:{
+    labels: locs,
+    datasets:[{label:'Surplus/Deficit',data:d.map(r=>r.surplus),
+      backgroundColor:d.map(r=>r.surplus>=0?'rgba(79,206,143,.8)':'rgba(247,111,79,.8)'),
+      borderRadius:4}]
+  },options:{plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9}}},y:{ticks:{callback:v=>fmt(v)}}}}});
+
+  // ── MONTHLY ROLLOUT ────────────────────────────────────────────────────────
+  const mm={};
+  d.forEach(r=>{
+    if(!r.month)return;
+    if(!mm[r.month])mm[r.month]={events:0,sb:0,att:0,rev:0,exp:0};
+    mm[r.month].events++; mm[r.month].sb+=r.sb_seminar;
+    mm[r.month].att+=r.attended; mm[r.month].rev+=r.actual_revenue;
+    mm[r.month].exp+=r.expenses;
+  });
+  const mk=Object.keys(mm).sort();
+  mc('offMonthChart',{type:'bar',data:{
+    labels:mk.map(fmtYM),
+    datasets:[
+      {label:'SB',       data:mk.map(k=>mm[k].sb),  backgroundColor:'rgba(79,142,247,.75)', yAxisID:'y', borderRadius:3},
+      {label:'Attended', data:mk.map(k=>mm[k].att), backgroundColor:'rgba(79,206,143,.45)', yAxisID:'y', borderRadius:3},
+      {label:'Events',   data:mk.map(k=>mm[k].events),type:'line',borderColor:'#f7c948',backgroundColor:'transparent',tension:.4,pointRadius:4,yAxisID:'y1'},
+    ]
+  },options:{plugins:{legend:{position:'bottom'}},scales:{
+    y:{beginAtZero:true,stacked:false},
+    y1:{position:'right',beginAtZero:true,grid:{drawOnChartArea:false}}
+  }}});
+
+  // ── ATTENDANCE & SB RATE ───────────────────────────────────────────────────
+  mc('offFunnelChart',{type:'bar',data:{
+    labels: locs,
+    datasets:[
+      {label:'Att% of Targeted', data:d.map(r=>r.targeted>0?+(r.attended/r.targeted*100).toFixed(1):0), backgroundColor:'rgba(79,216,247,.65)',borderRadius:3},
+      {label:'SB% of Attended',  data:d.map(r=>r.attended>0?+(r.sb_seminar/r.attended*100).toFixed(1):0), backgroundColor:'rgba(180,79,231,.65)',borderRadius:3},
+    ]
+  },options:{plugins:{legend:{position:'bottom'}},scales:{x:{ticks:{font:{size:9}}},y:{beginAtZero:true,ticks:{callback:v=>v+'%'}}}}});
+
+  // ── ATTENDEE KPIs ──────────────────────────────────────────────────────────
+  const AS=ATTENDEE_SUMMARY;
+  const colRate=(AS.total_revenue/AS.total_amount*100).toFixed(1);
+  const dueRate=(AS.total_due/AS.total_amount*100).toFixed(1);
+  const activeRate=(AS.active_students/AS.total_records*100).toFixed(0);
+  document.getElementById('attKpis').innerHTML=[
+    {l:'Unique Students',    v:fmtN(AS.total_students),   s:'Across all locations',                    ic:'🎓',c:'var(--a1)',ib:'rgba(79,142,247,.1)'},
+    {l:'Total Records',      v:fmtN(AS.total_records),    s:'Incl. multiple enrollments',              ic:'📝',c:'var(--t2)',ib:'rgba(138,144,170,.08)'},
+    {l:'Collected',          v:fmt(AS.total_revenue),     s:colRate+'% of total billed',               ic:'💰',c:'var(--a2)',ib:'rgba(247,201,72,.1)'},
+    {l:'Total Billed',       v:fmt(AS.total_amount),      s:'Before payments',                         ic:'📋',c:'var(--a5)',ib:'rgba(180,79,231,.1)'},
+    {l:'Outstanding Due',    v:fmt(AS.total_due),         s:dueRate+'% of billed',                     ic:'⚠',c:'var(--a4)',ib:'rgba(247,111,79,.1)'},
+    {l:'Active',             v:fmtN(AS.active_students),  s:activeRate+'% of records',                 ic:'✅',c:'var(--a3)',ib:'rgba(79,206,143,.1)'},
+    {l:'Inactive',           v:fmtN(AS.inactive_students),s:'Paused / pending',                        ic:'⏸',c:'var(--t2)',ib:'rgba(138,144,170,.08)'},
+    {l:'Closed',             v:fmtN(AS.closed_students),  s:'Completed / dropped',                     ic:'🔒',c:'var(--t3)',ib:'rgba(85,93,122,.08)'},
+    {l:'Avg Payment',        v:fmt(AS.avg_payment),       s:'Per paying student',                      ic:'📊',c:'var(--a3)',ib:'rgba(79,206,143,.1)'},
+    {l:'BCMB Enrollments',   v:fmtN((COURSE_TYPE_STATS.BCMB||{count:0}).count),   s:fmt((COURSE_TYPE_STATS.BCMB||{revenue:0}).revenue),   ic:'🔵',c:'var(--a1)',ib:'rgba(79,142,247,.1)'},
+    {l:'INSIGNIA Enrollments',v:fmtN((COURSE_TYPE_STATS.INSIGNIA||{count:0}).count),s:fmt((COURSE_TYPE_STATS.INSIGNIA||{revenue:0}).revenue),ic:'🟣',c:'var(--a5)',ib:'rgba(180,79,231,.1)'},
+    {l:'Other Courses',      v:fmtN(Object.entries(COURSE_TYPE_STATS).filter(([k])=>k!='BCMB'&&k!='INSIGNIA').reduce((s,[,v])=>s+v.count,0)), s:'Equity, F&O, Swing…', ic:'📚',c:'var(--a6)',ib:'rgba(79,216,247,.1)'},
+  ].map(k=>`<div class="kpi" style="--kc:${k.c};--kib:${k.ib}"><div class="ki">${k.ic}</div><div class="kl">${k.l}</div><div class="kv">${k.v}</div><div class="ks">${k.s}</div></div>`).join('');
+
+  // ── LOCATION REVENUE ───────────────────────────────────────────────────────
+  const locE=Object.entries(LOCATION_STATS_ATT).sort((a,b)=>b[1].revenue-a[1].revenue).slice(0,20);
+  mc('offLocRevChart',{type:'bar',data:{
+    labels:locE.map(([l])=>l.split(' ').slice(0,2).join(' ')),
+    datasets:[
+      {label:'Collected', data:locE.map(([,v])=>v.revenue),   backgroundColor:locE.map((_,i)=>COLS[i%COLS.length]+'cc'),borderRadius:4},
+      {label:'Due',       data:locE.map(([,v])=>v.total_due||0), backgroundColor:'rgba(247,111,79,.35)',borderRadius:4},
+    ]
+  },options:{indexAxis:'y',plugins:{legend:{position:'bottom'}},scales:{x:{ticks:{callback:v=>fmt(v)}},y:{ticks:{font:{size:10}}}}}}); 
+
+  // ── COURSE MIX DOUGHNUT ────────────────────────────────────────────────────
+  const ctK=Object.keys(COURSE_TYPE_STATS);
+  mc('offCourseChart',{type:'doughnut',data:{
+    labels:ctK.map(k=>k+' ('+fmtN(COURSE_TYPE_STATS[k].count)+')'),
+    datasets:[{data:ctK.map(k=>COURSE_TYPE_STATS[k].count),
+      backgroundColor:['rgba(79,142,247,.85)','rgba(180,79,231,.85)','rgba(79,206,143,.85)','rgba(247,201,72,.85)','rgba(247,111,79,.85)'],
+      borderWidth:2,borderColor:'#060910'}]
+  },options:{cutout:'58%',plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}}}}}); 
+
+  // ── SALES REP LEADERBOARD ─────────────────────────────────────────────────
+  const srRows=Object.entries(SALES_REP_STATS).map(([n,v])=>({name:n.trim(),...v})).sort((a,b)=>b.revenue-a.revenue);
+  document.getElementById('offSalesTable').innerHTML=`
+    <table><thead><tr>
+      <th>Rank</th><th>Sales Rep</th><th>Deals</th>
+      <th>Revenue Collected</th><th>Active</th><th>Active %</th><th>Avg Deal</th>
+    </tr></thead><tbody>
+    ${srRows.map((r,i)=>{const ar=(r.active/Math.max(1,r.deals)*100).toFixed(0);return`<tr>
+      <td><span class="rnk ${i<3?'r'+(i+1):''}">${i+1}</span></td>
+      <td style="color:var(--t1);font-weight:600">${r.name}</td>
+      <td style="color:var(--t2)">${r.deals}</td>
+      <td style="color:var(--a2);font-weight:700">${fmt(r.revenue)}</td>
+      <td style="color:var(--a3)">${r.active}</td>
+      <td><span class="bdg ${ar>=70?'bg':ar>=50?'by':'br'}">${ar}%</span></td>
+      <td>${fmt(r.avg_deal)}</td>
+    </tr>`;}).join('')}
+    </tbody></table>`;
+
+  // ── FULL SEMINAR TABLE ─────────────────────────────────────────────────────
+  document.getElementById('offTable').innerHTML=`
+    <table><thead><tr>
+      <th>#</th><th>Date</th><th>Location</th><th>Trainer(s)</th>
+      <th>Targeted</th><th>Attended</th><th>Att%</th>
+      <th>SB Day</th><th>SB%</th><th>Morn</th><th>Eve</th><th>Non-Web</th>
+      <th>Expenses</th><th>Exp Rev</th><th>Actual Rev</th><th>Total Rev</th>
+      <th>Surplus</th><th>ROI</th>
+    </tr></thead><tbody>
+    ${d.map((r,i)=>{
+      const attP=r.targeted>0?(r.attended/r.targeted*100).toFixed(0):0;
+      const sbP=r.attended>0?(r.sb_seminar/r.attended*100).toFixed(0):0;
+      const roiN=r.expenses>0?((r.actual_revenue-r.expenses)/r.expenses*100):0;
+      const roiS=r.expenses>0?roiN.toFixed(0)+'%':'—';
+      return`<tr>
+        <td style="color:var(--t3)">${i+1}</td>
+        <td style="color:var(--t2);white-space:nowrap">${r.date||'—'}</td>
+        <td style="color:var(--t1);font-weight:600">${r.location}</td>
+        <td style="color:var(--t2);font-size:10px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.trainer}">${r.trainer}</td>
+        <td>${fmtN(r.targeted)}</td>
+        <td>${fmtN(r.attended)}</td>
+        <td><span class="bdg ${attP>=40?'bg':attP>=20?'by':'br'}">${attP}%</span></td>
+        <td style="font-weight:700;color:var(--t1)">${r.sb_seminar}</td>
+        <td><span class="bdg ${sbP>=20?'bg':sbP>=12?'by':'br'}">${sbP}%</span></td>
+        <td style="color:var(--t2)">${r.sb_morning}</td>
+        <td style="color:var(--t2)">${r.sb_evening}</td>
+        <td style="color:var(--t3)">${r.sb_non_webinar}</td>
+        <td style="color:var(--a4)">${fmt(r.expenses)}</td>
+        <td style="color:var(--t3)">${r.expected_revenue?fmt(r.expected_revenue):'—'}</td>
+        <td style="color:var(--a2);font-weight:600">${fmt(r.actual_revenue)}</td>
+        <td style="color:var(--a3)">${fmt(r.total_revenue)}</td>
+        <td><span class="bdg ${r.surplus>0?'bg':'br'}">${r.surplus>=0?'':'-'}${fmt(Math.abs(r.surplus))}</span></td>
+        <td><span class="bdg ${roiN>=50?'bg':roiN>=0?'by':'br'}">${roiS}</span></td>
+      </tr>`;
+    }).join('')}
+    </tbody></table>`;
+}
+
+let activeTab='offline';
+function switchTab(name,el){
+  document.querySelectorAll('.ntab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name)?.classList.add('active');
+  if(el)el.classList.add('active');
+  activeTab=name;
+  renderOffline();
+}
+function renderAll(){renderOffline();}
+
+populateOfflineFilters();
+document.getElementById('dtFrom').addEventListener('change',()=>{document.getElementById('fYear').value='';renderOffline();});
+document.getElementById('dtTo').addEventListener('change',()=>{document.getElementById('fYear').value='';renderOffline();});
+document.getElementById('fYear').addEventListener('change',renderOffline);
+renderOffline();
+</script>
+</body>
+</html>
