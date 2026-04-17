@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Invesmate Offline Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080b12;--s1:#0f1220;--s2:#161a2c;--s3:#1c2138;
+  --border:rgba(255,255,255,0.07);
+  --a1:#4f8ef7;--a2:#f7c948;--a3:#4fce8f;--a4:#f76f4f;--a5:#b44fe7;--a6:#4fd8f7;
+  --t1:#e8eaf2;--t2:#8a90aa;--t3:#555d7a;--glow:rgba(79,142,247,0.15)
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;font-size:14px}
+
+/* HEADER */
+.hdr{background:linear-gradient(135deg,#0b1120,#0f1220,#0b1528);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;flex-wrap:wrap;gap:10px}
+.hdr-left{display:flex;align-items:center;gap:12px}
+.logo{width:38px;height:38px;background:linear-gradient(135deg,var(--a4),var(--a5));border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.hdr-title h1{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;letter-spacing:-.3px}
+.hdr-title p{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
+.hdr-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.badge-live{display:flex;align-items:center;gap:5px;background:rgba(79,206,143,.12);border:1px solid rgba(79,206,143,.3);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--a3);font-weight:600}
+.dot{width:6px;height:6px;background:var(--a3);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
+.hdr-stat{font-size:11px;color:var(--t3);background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:4px 10px}
+
+/* FILTER BAR */
+.fbar{background:var(--s1);border-bottom:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fg{display:flex;align-items:center;gap:6px}
+.fl{font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+select,input[type=date]{background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--t1);padding:5px 9px;font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;outline:none;transition:border-color .2s;min-width:120px}
+select:hover,input[type=date]:hover{border-color:var(--a1)}
+select:focus,input[type=date]:focus{border-color:var(--a1);box-shadow:0 0 0 3px var(--glow)}
+.btn{padding:6px 14px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;transition:all .2s;display:inline-flex;align-items:center;gap:5px}
+.btn-p{background:linear-gradient(135deg,var(--a1),#3a7de0);color:#fff}
+.btn-p:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(79,142,247,.4)}
+.btn-g{background:var(--s2);color:var(--t2);border:1px solid var(--border)}
+.btn-g:hover{color:var(--t1);border-color:var(--a3)}
+.btn-exp{background:linear-gradient(135deg,rgba(79,206,143,.15),rgba(79,206,143,.08));color:var(--a3);border:1px solid rgba(79,206,143,.3)}
+.btn-exp:hover{background:linear-gradient(135deg,rgba(79,206,143,.25),rgba(79,206,143,.15));transform:translateY(-1px)}
+.fcount{font-size:11px;color:var(--t3);margin-left:auto;white-space:nowrap}
+
+/* EXPORT TOOLBAR */
+.exp-bar{background:linear-gradient(135deg,rgba(79,206,143,.05),rgba(79,142,247,.05));border-bottom:1px solid rgba(79,206,143,.1);padding:8px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.exp-label{font-size:11px;color:var(--a3);font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+
+/* MAIN */
+.main{padding:18px 24px;max-width:1800px}
+
+/* NAV TABS */
+.ntabs{display:flex;gap:3px;margin-bottom:18px;background:var(--s1);border-radius:10px;padding:4px;width:fit-content;overflow-x:auto;border:1px solid var(--border)}
+.ntab{padding:7px 16px;border-radius:7px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:var(--t3);background:transparent;transition:all .2s;white-space:nowrap}
+.ntab.active{background:var(--a1);color:#fff}
+.ntab:hover:not(.active){color:var(--t1);background:var(--s2)}
+.tab-content{display:none}.tab-content.active{display:block}
+
+/* SECTION HEADER */
+.sh{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.sh::after{content:'';flex:1;height:1px;background:var(--border)}
+.sh-accent{font-size:10px;color:var(--t3);font-weight:400;font-family:'DM Sans',sans-serif;text-transform:none;letter-spacing:0}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--kc,var(--a1))}
+.ki{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;margin-bottom:9px;background:var(--kib,rgba(79,142,247,.12))}
+.kl{font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.kv{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--t1);letter-spacing:-1px;line-height:1}
+.ks{font-size:10px;color:var(--t3);margin-top:4px}
+
+/* CHARTS */
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.cgrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
+.cfull{grid-column:1/-1}
+.cc{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px}
+.cc-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:8px;flex-wrap:wrap}
+.cc-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--t1);margin-bottom:2px}
+.cc-sub{font-size:11px;color:var(--t3)}
+.cc-badge{background:rgba(79,142,247,.12);border:1px solid rgba(79,142,247,.2);color:var(--a1);padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.cc-actions{display:flex;gap:6px;align-items:center;flex-shrink:0}
+canvas{max-height:280px}
+
+/* TABLE */
+.tw{overflow-x:auto}
+.tw-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.tw-search{background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--t1);padding:6px 11px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;width:200px;transition:border-color .2s}
+.tw-search:focus{border-color:var(--a1);box-shadow:0 0 0 3px var(--glow)}
+table{width:100%;border-collapse:collapse}
+th{font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:8px 11px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:var(--t1)}
+th.sort-asc::after{content:' ↑';color:var(--a1)}
+th.sort-desc::after{content:' ↓';color:var(--a1)}
+td{padding:9px 11px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;color:var(--t2);white-space:nowrap}
+tr:hover td{background:rgba(255,255,255,.02);color:var(--t1)}
+.tfoot-row td{background:var(--s2);font-weight:700;color:var(--t1);border-top:1px solid var(--border)}
+
+/* BADGES */
+.bdg{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
+.bg{background:rgba(79,206,143,.12);color:var(--a3)}
+.by{background:rgba(247,201,72,.12);color:var(--a2)}
+.br{background:rgba(247,111,79,.12);color:var(--a4)}
+.bb{background:rgba(79,142,247,.12);color:var(--a1)}
+.bp{background:rgba(180,79,231,.12);color:var(--a5)}
+.bc{background:rgba(79,216,247,.12);color:var(--a6)}
+
+/* RANK */
+.rnk{width:20px;height:20px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;margin-right:6px}
+.r1{background:linear-gradient(135deg,#f7c948,#e6a800);color:#000}
+.r2{background:rgba(200,200,220,.15);color:#aaa}
+.r3{background:rgba(200,120,80,.2);color:#c87}
+
+/* INSIGHT / RECOMMENDATION */
+.igrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+.icard{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px}
+.icard h3{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.iitem{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.iitem:last-child{border-bottom:none}
+.iname{font-size:12px;color:var(--t2)}
+.ival{font-size:12px;font-weight:700;color:var(--t1)}
+
+/* MINI PROGRESS BAR */
+.mb-wrap{display:flex;align-items:center;gap:6px;margin-top:3px}
+.mb{height:3px;background:var(--border);border-radius:2px;flex:1;overflow:hidden}
+.mbf{height:100%;border-radius:2px;transition:width .8s ease}
+
+/* SPARKLINE MINI CHART */
+.sparkline-row{display:flex;align-items:center;gap:8px}
+.spark-canvas{width:80px!important;height:28px!important;max-height:28px}
+
+/* TREND PILL */
+.trend-up{color:var(--a3);font-size:10px;font-weight:700}
+.trend-dn{color:var(--a4);font-size:10px;font-weight:700}
+
+/* PAGINATION */
+.pagination{display:flex;align-items:center;gap:6px;margin-top:12px;justify-content:center;flex-wrap:wrap}
+.pg-btn{padding:5px 11px;border-radius:7px;border:1px solid var(--border);background:var(--s2);color:var(--t2);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;transition:all .18s}
+.pg-btn:hover{color:var(--t1);border-color:var(--a1)}
+.pg-btn.active{background:var(--a1);color:#fff;border-color:var(--a1)}
+.pg-info{font-size:11px;color:var(--t3)}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--s2);border:1px solid var(--a3);border-radius:10px;padding:10px 18px;font-size:12px;color:var(--a3);font-weight:600;z-index:9999;animation:toastin .3s ease;display:none;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+@keyframes toastin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* TOOLTIP */
+.tooltip-box{position:absolute;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--t1);z-index:1000;pointer-events:none;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+
+@media(max-width:1000px){.cgrid,.cgrid3,.igrid{grid-template-columns:1fr}.main{padding:12px 14px}.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-left">
+    <div class="logo">🏢</div>
+    <div class="hdr-title"><h1>Invesmate Offline Dashboard</h1><p>Seminar Operations · Attendee Intelligence · Sales Performance</p></div>
+  </div>
+  <div class="hdr-right">
+    <div class="badge-live"><div class="dot"></div>Live Data</div>
+    <div class="hdr-stat" id="hdr-seminars">— Seminars</div>
+    <div class="hdr-stat" id="hdr-locations">— Locations</div>
+    <div class="hdr-stat" id="hdr-students">— Students</div>
+    <div class="hdr-stat" id="hdr-revenue">— Revenue</div>
+  </div>
+</div>
+
+<!-- FILTER BAR -->
+<div class="fbar">
+  <div class="fg"><span class="fl">📆 Year</span>
+    <select id="fYear" onchange="renderOffline()">
+      <option value="">All Years</option>
+      <option value="2024">2024</option>
+      <option value="2025">2025</option>
+      <option value="2026">2026</option>
+    </select>
+  </div>
+  <div class="fg"><span class="fl">📅 From</span>
+    <input type="date" id="dtFrom" value="2024-01-01">
+    <span style="color:var(--t3);font-size:11px">–</span>
+    <input type="date" id="dtTo" value="2026-12-31">
+  </div>
+  <div class="fg"><span class="fl">📍 Location</span>
+    <select id="offLocFilter" onchange="renderOffline()"><option value="">All Locations</option></select>
+  </div>
+  <div class="fg"><span class="fl">🎓 Trainer</span>
+    <select id="offTrainerFilter" onchange="renderOffline()"><option value="">All Trainers</option></select>
+  </div>
+  <div class="fg"><span class="fl">📊 Sort</span>
+    <select id="offSortBy" onchange="renderOffline()">
+      <option value="date">Date</option>
+      <option value="surplus">Surplus</option>
+      <option value="actual_revenue">Revenue</option>
+      <option value="attended">Attended</option>
+      <option value="sb_seminar">Seat Booked</option>
+      <option value="roi">ROI</option>
+    </select>
+  </div>
+  <button class="btn btn-g" onclick="resetFilters()">↺ Reset</button>
+  <div class="fcount" id="fcount"></div>
+</div>
+
+<!-- EXPORT BAR -->
+<div class="exp-bar">
+  <span class="exp-label">⬇ Export</span>
+  <button class="btn btn-exp" onclick="exportSeminarsCSV()">📄 Seminars CSV</button>
+  <button class="btn btn-exp" onclick="exportSeminarsXLSX()">📊 Seminars Excel</button>
+  <button class="btn btn-exp" onclick="exportStudentsCSV()">🎓 Student List CSV</button>
+  <button class="btn btn-exp" onclick="exportStudentsXLSX()">🎓 Student List Excel</button>
+  <button class="btn btn-exp" onclick="exportSalesRepCSV()">🏆 Sales Rep CSV</button>
+  <button class="btn btn-exp" onclick="exportAllDataJSON()">💾 Full Data JSON</button>
+</div>
+
+<div class="main">
+  <div class="ntabs">
+    <button class="ntab active" onclick="switchTab('overview',this)">📊 Overview</button>
+    <button class="ntab" onclick="switchTab('seminar',this)">🏢 Seminar Detail</button>
+    <button class="ntab" onclick="switchTab('attendee',this)">👥 Attendees</button>
+    <button class="ntab" onclick="switchTab('sales',this)">🏆 Sales</button>
+    <button class="ntab" onclick="switchTab('trends',this)">📈 Trends</button>
+  </div>
+
+  <!-- ═══════════════ TAB: OVERVIEW ═══════════════ -->
+  <div class="tab-content active" id="tab-overview">
+
+    <div class="sh">📊 Seminar Operations <span class="sh-accent" id="offSemCount"></span></div>
+    <div class="kpi-grid" id="offKpis"></div>
+
+    <div class="cgrid">
+      <div class="cc">
+        <div class="cc-hdr">
+          <div><div class="cc-title">Revenue vs Expenses</div><div class="cc-sub">Actual revenue · Expenses · Surplus per seminar</div></div>
+          <div class="cc-actions"><div class="cc-badge" id="offRevBadge">—</div><button class="btn btn-g" onclick="exportChart('offRevChart','revenue_vs_expenses')" style="font-size:10px;padding:4px 8px">⬇</button></div>
+        </div>
+        <canvas id="offRevChart"></canvas>
+      </div>
+      <div class="cc">
+        <div class="cc-hdr">
+          <div><div class="cc-title">Surplus / Deficit</div><div class="cc-sub">Green = profitable · Red = loss-making</div></div>
+          <div class="cc-actions"><div class="cc-badge" id="offROIBadge">—</div><button class="btn btn-g" onclick="exportChart('offROIChart','surplus_deficit')" style="font-size:10px;padding:4px 8px">⬇</button></div>
+        </div>
+        <canvas id="offROIChart"></canvas>
+      </div>
+    </div>
+
+    <div class="cgrid">
+      <div class="cc">
+        <div class="cc-hdr">
+          <div><div class="cc-title">Monthly Rollup</div><div class="cc-sub">SB · Attendees · Events per month</div></div>
+          <button class="btn btn-g" onclick="exportChart('offMonthChart','monthly_rollup')" style="font-size:10px;padding:4px 8px">⬇</button>
+        </div>
+        <canvas id="offMonthChart"></canvas>
+      </div>
+      <div class="cc">
+        <div class="cc-hdr">
+          <div><div class="cc-title">Attendance &amp; SB Conversion Rate</div><div class="cc-sub">% attended of targeted · % seat booked of attended</div></div>
+          <button class="btn btn-g" onclick="exportChart('offFunnelChart','conversion_rates')" style="font-size:10px;padding:4px 8px">⬇</button>
+        </div>
+        <canvas id="offFunnelChart"></canvas>
+      </div>
+    </div>
+
+    <div class="cgrid3">
+      <div class="cc">
+        <div class="cc-hdr">
+          <div><div class="cc-title">SB Breakdown</div><div class="cc-sub">Morning · Evening · Non-Webinar per month</div></div>
+          <button class="btn btn-g" onclick="exportChart('sbBreakChart','sb_breakdown')" style="font-size:10px;padding:4px 8px">⬇</button>
+        </div>
+        <canvas id="sbBreakChart"></canvas>
+      </div>
+      <div class="cc">
+        <div class="cc-hdr">
+          <div><div class="cc-title">Top Locations by Surplus</div><div class="cc-sub">Net profitability per city</div></div>
+          <button class="btn btn-g" onclick="exportChart('offLocSurplusChart','location_surplus')" style="font-size:10px;padding:4px 8px">⬇</button>
+        </div>
+        <canvas id="offLocSurplusChart"></canvas>
+      </div>
+      <div class="cc">
+        <div class="cc-hdr">
+          <div><div class="cc-title">Profitability Split</div><div class="cc-sub">Profitable vs loss-making seminars</div></div>
+          <button class="btn btn-g" onclick="exportChart('profitDonutChart','profitability')" style="font-size:10px;padding:4px 8px">⬇</button>
+        </div>
+        <canvas id="profitDonutChart"></canvas>
+      </div>
+    </div>
+
+    <!-- ATTENDEE KPIs -->
+    <div class="sh" style="margin-top:4px">👥 Attendee Intelligence <span class="sh-accent" id="offAttCount"></span></div>
+    <div class="kpi-grid" id="attKpis"></div>
+
+    <div class="cgrid">
+      <div class="cc">
+        <div class="cc-hdr">
+          <div><div class="cc-title">Revenue &amp; Outstanding by Location</div><div class="cc-sub">Top 20 locations — collected vs outstanding due</div></div>
+          <div class="cc-actions"><div class="cc-badge" id="offLocBadge">—</div><button class="btn btn-g" onclick="exportChart('offLocRevChart','location_revenue')" style="font-size:10px;padding:4px 8px">⬇</button></div>
+        </div>
+        <canvas id="offLocRevChart"></canvas>
+      </div>
+      <div class="cc">
+        <div class="cc-hdr">
+          <div><div class="cc-title">Course Enrollment Mix</div><div class="cc-sub">Which courses offline students enrolled in</div></div>
+          <button class="btn btn-g" onclick="exportChart('offCourseChart','course_mix')" style="font-size:10px;padding:4px 8px">⬇</button>
+        </div>
+        <canvas id="offCourseChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ TAB: SEMINAR DETAIL ═══════════════ -->
+  <div class="tab-content" id="tab-seminar">
+    <div class="sh">🏢 All Seminars — Complete Detail <span class="sh-accent" id="semDetailCount"></span></div>
+    <div class="cc cfull">
+      <div class="cc-hdr">
+        <div><div class="cc-title">Seminar Records</div><div class="cc-sub">Click column headers to sort</div></div>
+        <div class="cc-actions">
+          <button class="btn btn-exp" onclick="exportSeminarsCSV()">📄 CSV</button>
+          <button class="btn btn-exp" onclick="exportSeminarsXLSX()">📊 Excel</button>
+        </div>
+      </div>
+      <div class="tw-toolbar">
+        <input class="tw-search" type="text" id="semSearch" placeholder="🔍 Search location / trainer…" oninput="renderSeminarTable()">
+        <span class="pg-info" id="semPagInfo"></span>
+      </div>
+      <div class="tw" id="offTable"></div>
+      <div class="pagination" id="semPagination"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ TAB: ATTENDEES ═══════════════ -->
+  <div class="tab-content" id="tab-attendee">
+    <div class="sh">👥 Student &amp; Attendee Intelligence <span class="sh-accent" id="attDetailCount"></span></div>
+
+    <div class="kpi-grid" id="attKpis2"></div>
+
+    <div class="cgrid">
+      <div class="cc">
+        <div class="cc-hdr">
+          <div><div class="cc-title">Collection Status Breakdown</div><div class="cc-sub">Active · Inactive · Closed students</div></div>
+          <button class="btn btn-g" onclick="exportChart('attStatusChart','student_status')" style="font-size:10px;padding:4px 8px">⬇</button>
+        </div>
+        <canvas id="attStatusChart"></canvas>
+      </div>
+      <div class="cc">
+        <div class="cc-hdr">
+          <div><div class="cc-title">Course Revenue Contribution</div><div class="cc-sub">Revenue collected per course type</div></div>
+          <button class="btn btn-g" onclick="exportChart('attCourseRevChart','course_revenue')" style="font-size:10px;padding:4px 8px">⬇</button>
+        </div>
+        <canvas id="attCourseRevChart"></canvas>
+      </div>
+    </div>
+
+    <div class="cc cfull">
+      <div class="cc-hdr">
+        <div><div class="cc-title">Location Performance — Students &amp; Revenue</div><div class="cc-sub">Top 25 locations by revenue collected</div></div>
+        <button class="btn btn-g" onclick="exportChart('attLocChart','location_performance')" style="font-size:10px;padding:4px 8px">⬇</button>
+      </div>
+      <canvas id="attLocChart"></canvas>
+    </div>
+
+    <!-- STUDENT LIST TABLE -->
+    <div class="cc cfull">
+      <div class="cc-hdr">
+        <div><div class="cc-title">📋 Location Summary Table</div><div class="cc-sub">Students · Collected · Due · Active per location</div></div>
+        <div class="cc-actions">
+          <button class="btn btn-exp" onclick="exportStudentsCSV()">🎓 Student List CSV</button>
+          <button class="btn btn-exp" onclick="exportStudentsXLSX()">🎓 Student List Excel</button>
+        </div>
+      </div>
+      <div class="tw-toolbar">
+        <input class="tw-search" type="text" id="attSearch" placeholder="🔍 Search location…" oninput="renderAttTable()">
+        <span class="pg-info" id="attPagInfo"></span>
+      </div>
+      <div class="tw" id="attTable"></div>
+      <div class="pagination" id="attPagination"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ TAB: SALES ═══════════════ -->
+  <div class="tab-content" id="tab-sales">
+    <div class="sh">🏆 Sales Performance <span class="sh-accent" id="salesCount"></span></div>
+
+    <div class="kpi-grid" id="salesKpis"></div>
+
+    <div class="cgrid">
+      <div class="cc">
+        <div class="cc-hdr">
+          <div><div class="cc-title">Top 15 Sales Reps — Revenue</div><div class="cc-sub">Total collected per representative</div></div>
+          <div class="cc-actions"><div class="cc-badge" id="offSalesBadge">—</div><button class="btn btn-g" onclick="exportChart('salesRevChart','sales_rep_revenue')" style="font-size:10px;padding:4px 8px">⬇</button></div>
+        </div>
+        <canvas id="salesRevChart"></canvas>
+      </div>
+      <div class="cc">
+        <div class="cc-hdr">
+          <div><div class="cc-title">Sales Rep — Deal Count</div><div class="cc-sub">Number of deals closed per rep</div></div>
+          <button class="btn btn-g" onclick="exportChart('salesDealsChart','sales_rep_deals')" style="font-size:10px;padding:4px 8px">⬇</button>
+        </div>
+        <canvas id="salesDealsChart"></canvas>
+      </div>
+    </div>
+
+    <div class="cc cfull">
+      <div class="cc-hdr">
+        <div><div class="cc-title">🏆 Sales Rep Leaderboard</div><div class="cc-sub">Revenue · Deals · Active % · Avg deal size</div></div>
+        <div class="cc-actions">
+          <button class="btn btn-exp" onclick="exportSalesRepCSV()">📄 CSV</button>
+        </div>
+      </div>
+      <div class="tw-toolbar">
+        <input class="tw-search" type="text" id="salesSearch" placeholder="🔍 Search rep name…" oninput="renderSalesTable()">
+        <span class="pg-info" id="salesPagInfo"></span>
+      </div>
+      <div class="tw" id="offSalesTable"></div>
+      <div class="pagination" id="salesPagination"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ TAB: TRENDS ═══════════════ -->
+  <div class="tab-content" id="tab-trends">
+    <div class="sh">📈 Trend Analysis</div>
+
+    <div class="kpi-grid" id="trendsKpis"></div>
+
+    <div class="cc cfull">
+      <div class="cc-hdr">
+        <div><div class="cc-title">Revenue Trend — Month over Month</div><div class="cc-sub">Actual revenue · Expenses · Net surplus over time</div></div>
+        <button class="btn btn-g" onclick="exportChart('revTrendChart','revenue_trend')" style="font-size:10px;padding:4px 8px">⬇</button>
+      </div>
+      <canvas id="revTrendChart"></canvas>
+    </div>
+
+    <div class="cgrid">
+      <div class="cc">
+        <div class="cc-hdr">
+          <div><div class="cc-title">Seat Booking Trend</div><div class="cc-sub">Morning · Evening · Non-Webinar over time</div></div>
+          <button class="btn btn-g" onclick="exportChart('sbTrendChart','sb_trend')" style="font-size:10px;padding:4px 8px">⬇</button>
+        </div>
+        <canvas id="sbTrendChart"></canvas>
+      </div>
+      <div class="cc">
+        <div class="cc-hdr">
+          <div><div class="cc-title">Conversion Rate Trend</div><div class="cc-sub">Avg attendance rate · SB rate per month</div></div>
+          <button class="btn btn-g" onclick="exportChart('convTrendChart','conversion_trend')" style="font-size:10px;padding:4px 8px">⬇</button>
+        </div>
+        <canvas id="convTrendChart"></canvas>
+      </div>
+    </div>
+
+    <div class="cgrid">
+      <div class="cc">
+        <div class="cc-hdr">
+          <div><div class="cc-title">ROI Trend per Month</div><div class="cc-sub">Return on investment % over time</div></div>
+          <button class="btn btn-g" onclick="exportChart('roiTrendChart','roi_trend')" style="font-size:10px;padding:4px 8px">⬇</button>
+        </div>
+        <canvas id="roiTrendChart"></canvas>
+      </div>
+      <div class="cc">
+        <div class="cc-hdr">
+          <div><div class="cc-title">Seminar Count per Month</div><div class="cc-sub">How many seminars run each month</div></div>
+          <button class="btn btn-g" onclick="exportChart('countTrendChart','seminar_count_trend')" style="font-size:10px;padding:4px 8px">⬇</button>
+        </div>
+        <canvas id="countTrendChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// @@DATA@@
+
+// ── CONSTANTS & HELPERS ────────────────────────────────────────────────────
+const COLS = ['#4f8ef7','#4fce8f','#f7c948','#f76f4f','#b44fe7','#4fd8f7','#f74fb8','#8ef74f','#f79e4f','#4f4ff7'];
+let charts = {};
+
+const fmt = n => {
+  if(n===undefined||n===null||isNaN(n)) return '0';
+  const abs=Math.abs(n), s=n<0?'-':'';
+  if(abs>=1e7) return s+(abs/1e7).toFixed(2)+'Cr';
+  if(abs>=1e5) return s+(abs/1e5).toFixed(2)+'L';
+  if(abs>=1e3) return s+(abs/1e3).toFixed(1)+'K';
+  return s+Math.round(abs).toLocaleString();
+};
+const fmtFull = n => {
+  if(!n) return '0';
+  return Math.round(n).toLocaleString('en-IN');
+};
+const pct = (a,b) => b ? (a/b*100).toFixed(1)+'%' : 'N/A';
+const sum = (arr,k) => arr.reduce((s,r)=>s+(+r[k]||0),0);
+const fmtYM = ym => { const [y,mo]=ym.split('-'); return ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+mo]+"'"+y.slice(2); };
+
+function dc(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+function mc(id,cfg){
+  dc(id);
+  const ctx=document.getElementById(id);
+  if(!ctx)return;
+  charts[id]=new Chart(ctx,{...cfg,options:{
+    ...cfg.options,responsive:true,maintainAspectRatio:true,
+    plugins:{...(cfg.options?.plugins||{}),legend:{labels:{color:'#8a90aa',font:{size:11}},...(cfg.options?.plugins?.legend||{})}},
+    scales:cfg.options?.scales?Object.fromEntries(Object.entries(cfg.options.scales).map(([k,v])=>[k,{...v,
+      grid:{color:'rgba(255,255,255,0.05)',...(v.grid||{})},
+      ticks:{color:'#8a90aa',font:{size:10},...(v.ticks||{})}}])):undefined
+  }});
+  return charts[id];
+}
+
+function showToast(msg,dur=2500){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.style.display='block';
+  setTimeout(()=>t.style.display='none',dur);
+}
+
+// ── FILTER STATE ─────────────────────────────────────────────────────────────
+let filteredSeminars = [...SEMINAR_DATA];
+let semSortKey = 'date';
+let semSortDir = 1;
+let semPage = 1;
+const SEM_PER_PAGE = 25;
+let attPage = 1;
+const ATT_PER_PAGE = 30;
+let salesPage = 1;
+const SALES_PER_PAGE = 30;
+
+// ── INIT FILTERS ─────────────────────────────────────────────────────────────
+function initFilters(){
+  const locSel=document.getElementById('offLocFilter');
+  const trSel=document.getElementById('offTrainerFilter');
+  if(locSel.options.length===1){
+    [...new Set(SEMINAR_DATA.map(r=>r.location))].filter(Boolean).sort().forEach(l=>{
+      const o=document.createElement('option');o.value=l;o.textContent=l;locSel.appendChild(o);
+    });
+  }
+  if(trSel.options.length===1){
+    const t=new Set();
+    SEMINAR_DATA.forEach(r=>{(r.trainer||'').split(',').forEach(x=>{const n=x.trim();if(n)t.add(n);});});
+    [...t].sort().forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;trSel.appendChild(o);});
+  }
+}
+
+function getFiltered(){
+  const from=document.getElementById('dtFrom').value;
+  const to=document.getElementById('dtTo').value;
+  const year=document.getElementById('fYear').value;
+  const locF=(document.getElementById('offLocFilter')?.value||'').toLowerCase();
+  const trF=(document.getElementById('offTrainerFilter')?.value||'').toLowerCase();
+  return SEMINAR_DATA.filter(r=>{
+    if(year && (r.date<year+'-01-01'||r.date>year+'-12-31')) return false;
+    if(!year){
+      if(from && r.date<from) return false;
+      if(to   && r.date>to)   return false;
+    }
+    if(locF && !r.location.toLowerCase().includes(locF)) return false;
+    if(trF  && !(r.trainer||'').toLowerCase().includes(trF)) return false;
+    return true;
+  });
+}
+
+function resetFilters(){
+  document.getElementById('fYear').value='';
+  document.getElementById('dtFrom').value='2024-01-01';
+  document.getElementById('dtTo').value='2026-12-31';
+  document.getElementById('offLocFilter').value='';
+  document.getElementById('offTrainerFilter').value='';
+  document.getElementById('offSortBy').value='date';
+  renderOffline();
+}
+
+// ── MAIN RENDER ───────────────────────────────────────────────────────────────
+function renderOffline(){
+  const sortKey=document.getElementById('offSortBy')?.value||'date';
+  let d=[...getFiltered()];
+  if(sortKey==='date') d.sort((a,b)=>a.date.localeCompare(b.date));
+  else d.sort((a,b)=>b[sortKey]-a[sortKey]);
+  filteredSeminars=d;
+
+  // Aggregates
+  const tTgt   = sum(d,'targeted');
+  const tAtt   = sum(d,'attended');
+  const tSB    = sum(d,'sb_seminar');
+  const tSBMo  = sum(d,'sb_morning');
+  const tSBEv  = sum(d,'sb_evening');
+  const tSBNW  = sum(d,'sb_non_webinar');
+  const tExp   = sum(d,'expenses');
+  const tExpRv = sum(d,'expected_revenue');
+  const tActRv = sum(d,'actual_revenue');
+  const tTotRv = sum(d,'total_revenue');
+  const tSurp  = sum(d,'surplus');
+  const profit = d.filter(r=>r.surplus>0).length;
+  const loss   = d.filter(r=>r.surplus<=0).length;
+  const avgAtt = d.length ? Math.round(tAtt/d.length) : 0;
+  const avgSB  = d.length ? (tSB/d.length).toFixed(1) : 0;
+  const attPct = tTgt ? (tAtt/tTgt*100).toFixed(1) : '0';
+  const sbPct  = tAtt ? (tSB/tAtt*100).toFixed(1) : '0';
+  const roi    = tExp>0 ? ((tActRv-tExp)/tExp*100).toFixed(1) : 0;
+  const uniqL  = new Set(d.map(r=>r.location)).size;
+  const best   = d.length ? [...d].sort((a,b)=>b.surplus-a.surplus)[0] : null;
+  const worst  = d.length ? [...d].sort((a,b)=>a.surplus-b.surplus)[0] : null;
+  const bestAtt= d.length ? [...d].sort((a,b)=>{const pa=a.targeted>0?a.attended/a.targeted:0,pb=b.targeted>0?b.attended/b.targeted:0;return pb-pa;})[0] : null;
+
+  // Header stats
+  document.getElementById('hdr-seminars').textContent = d.length+' Seminars';
+  document.getElementById('hdr-locations').textContent = uniqL+' Locations';
+  document.getElementById('hdr-students').textContent = fmt(ATTENDEE_SUMMARY.total_students||0)+' Students';
+  document.getElementById('hdr-revenue').textContent = fmt(tActRv)+' Rev';
+  document.getElementById('fcount').textContent = d.length+' / '+SEMINAR_DATA.length+' seminars';
+
+  const sc=document.getElementById('offSemCount');
+  if(sc) sc.textContent='· '+d.length+' seminars · '+uniqL+' locations';
+  const ac=document.getElementById('offAttCount');
+  if(ac){ const AS=ATTENDEE_SUMMARY; ac.textContent='· '+fmt(AS.total_students||0)+' students · '+fmt(AS.total_revenue||0)+' collected'; }
+
+  document.getElementById('offRevBadge').textContent = fmt(tActRv);
+  document.getElementById('offROIBadge').textContent = roi+'% ROI';
+  document.getElementById('offSalesBadge').textContent = Object.keys(SALES_REP_STATS).length+' reps';
+  document.getElementById('offLocBadge').textContent = Object.keys(LOCATION_STATS_ATT).length+' locations';
+
+  // ── SEMINAR KPIS ──────────────────────────────────────────────────────────
+  const kpis1 = [
+    {l:'Seminars Run',       v:d.length,              s:uniqL+' locations',                           ic:'🏢',c:'var(--a4)',ib:'rgba(247,111,79,.1)'},
+    {l:'Total Targeted',     v:fmt(tTgt),             s:'Audience invited',                           ic:'👥',c:'var(--a1)',ib:'rgba(79,142,247,.1)'},
+    {l:'Total Attended',     v:fmt(tAtt),             s:attPct+'% of targeted',                       ic:'✅',c:'var(--a3)',ib:'rgba(79,206,143,.1)'},
+    {l:'Avg Attendance',     v:avgAtt,                s:'Per seminar',                                ic:'👤',c:'var(--a1)',ib:'rgba(79,142,247,.1)'},
+    {l:'Day-of SB Total',    v:fmt(tSB),              s:sbPct+'% of attended',                        ic:'🎟',c:'var(--a5)',ib:'rgba(180,79,231,.1)'},
+    {l:'Avg SB / Seminar',   v:avgSB,                 s:'Bookings per event',                         ic:'🎫',c:'var(--a5)',ib:'rgba(180,79,231,.1)'},
+    {l:'Morning SB',         v:fmt(tSBMo),            s:tSB?(tSBMo/tSB*100).toFixed(0)+'% of SB':'—',ic:'🌅',c:'var(--a2)',ib:'rgba(247,201,72,.1)'},
+    {l:'Evening SB',         v:fmt(tSBEv),            s:tSB?(tSBEv/tSB*100).toFixed(0)+'% of SB':'—',ic:'🌆',c:'var(--a5)',ib:'rgba(180,79,231,.1)'},
+    {l:'Non-Webinar SB',     v:fmt(tSBNW),            s:'Walk-in conversions',                        ic:'🚶',c:'var(--a6)',ib:'rgba(79,216,247,.1)'},
+    {l:'Expected Revenue',   v:fmt(tExpRv),           s:'Projected earnings',                         ic:'📋',c:'var(--t2)',ib:'rgba(138,144,170,.08)'},
+    {l:'Actual Revenue',     v:fmt(tActRv),           s:'Day-of collections',                         ic:'💰',c:'var(--a2)',ib:'rgba(247,201,72,.1)'},
+    {l:'Total Revenue',      v:fmt(tTotRv),           s:'Incl. post-event',                           ic:'📈',c:'var(--a3)',ib:'rgba(79,206,143,.1)'},
+    {l:'Total Expenses',     v:fmt(tExp),             s:'All seminars combined',                       ic:'💸',c:'var(--a4)',ib:'rgba(247,111,79,.1)'},
+    {l:'Net Surplus',        v:fmt(tSurp),            s:tSurp>=0?'Profitable ✓':'Net loss ✗',        ic:'📊',c:tSurp>=0?'var(--a3)':'var(--a4)',ib:'rgba(79,206,143,.1)'},
+    {l:'Overall ROI',        v:roi+'%',               s:'(Actual-Exp)/Exp×100',                       ic:'📉',c:'var(--a3)',ib:'rgba(79,206,143,.1)'},
+    {l:'Profitable Events',  v:profit+'/'+d.length,  s:loss+' loss events',                          ic:'🎯',c:'var(--a3)',ib:'rgba(79,206,143,.1)'},
+    {l:'Best Surplus',       v:best?fmt(best.surplus):'—', s:best?best.location:'',                  ic:'🏆',c:'var(--a2)',ib:'rgba(247,201,72,.1)'},
+    {l:'Worst Loss',         v:worst?fmt(worst.surplus):'—',s:worst?worst.location:'',               ic:'⚠️', c:'var(--a4)',ib:'rgba(247,111,79,.1)'},
+    {l:'Best Attendance %',  v:bestAtt&&bestAtt.targeted>0?(bestAtt.attended/bestAtt.targeted*100).toFixed(0)+'%':'—', s:bestAtt?bestAtt.location:'',ic:'🌟',c:'var(--a3)',ib:'rgba(79,206,143,.1)'},
+    {l:'Rev vs Expected',    v:tExpRv>0?(tActRv/tExpRv*100).toFixed(0)+'%':'—', s:'Actual / Expected', ic:'🎯',c:'var(--a2)',ib:'rgba(247,201,72,.1)'},
+  ];
+  document.getElementById('offKpis').innerHTML = kpis1.map(k=>`<div class="kpi" style="--kc:${k.c};--kib:${k.ib}"><div class="ki">${k.ic}</div><div class="kl">${k.l}</div><div class="kv">${k.v}</div><div class="ks">${k.s}</div></div>`).join('');
+
+  // Short labels
+  const locs = d.map(r=>r.location.length>10?r.location.split(' ').map(w=>w[0]).join(''):r.location.split(' ').slice(0,2).join(' '));
+
+  // ── REVENUE vs EXPENSES ──────────────────────────────────────────────────
+  mc('offRevChart',{type:'bar',data:{
+    labels:locs,
+    datasets:[
+      {label:'Expenses',   data:d.map(r=>r.expenses),       backgroundColor:'rgba(247,111,79,.7)',borderRadius:3},
+      {label:'Actual Rev', data:d.map(r=>r.actual_revenue), backgroundColor:'rgba(79,206,143,.7)',borderRadius:3},
+      {label:'Total Rev',  data:d.map(r=>r.total_revenue),  backgroundColor:'rgba(79,142,247,.45)',borderRadius:3},
+    ]
+  },options:{plugins:{legend:{position:'bottom'}},scales:{x:{ticks:{font:{size:9}}},y:{beginAtZero:true,ticks:{callback:v=>fmt(v)}}}}});
+
+  // ── SURPLUS / DEFICIT ───────────────────────────────────────────────────
+  mc('offROIChart',{type:'bar',data:{
+    labels:locs,
+    datasets:[{label:'Surplus/Deficit',data:d.map(r=>r.surplus),
+      backgroundColor:d.map(r=>r.surplus>=0?'rgba(79,206,143,.8)':'rgba(247,111,79,.8)'),borderRadius:4}]
+  },options:{plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9}}},y:{ticks:{callback:v=>fmt(v)}}}}});
+
+  // ── MONTHLY ROLLUP ──────────────────────────────────────────────────────
+  const mm={};
+  d.forEach(r=>{
+    if(!r.month)return;
+    if(!mm[r.month])mm[r.month]={events:0,sb:0,att:0,rev:0,exp:0,surp:0,sbMo:0,sbEv:0,sbNW:0};
+    mm[r.month].events++; mm[r.month].sb+=r.sb_seminar;
+    mm[r.month].att+=r.attended; mm[r.month].rev+=r.actual_revenue;
+    mm[r.month].exp+=r.expenses; mm[r.month].surp+=r.surplus;
+    mm[r.month].sbMo+=r.sb_morning; mm[r.month].sbEv+=r.sb_evening; mm[r.month].sbNW+=r.sb_non_webinar;
+  });
+  const mk=Object.keys(mm).sort();
+
+  mc('offMonthChart',{type:'bar',data:{
+    labels:mk.map(fmtYM),
+    datasets:[
+      {label:'SB',       data:mk.map(k=>mm[k].sb),     backgroundColor:'rgba(79,142,247,.75)',yAxisID:'y',borderRadius:3},
+      {label:'Attended', data:mk.map(k=>mm[k].att),    backgroundColor:'rgba(79,206,143,.45)',yAxisID:'y',borderRadius:3},
+      {label:'Events',   data:mk.map(k=>mm[k].events), type:'line',borderColor:'#f7c948',backgroundColor:'transparent',tension:.4,pointRadius:4,yAxisID:'y1'},
+    ]
+  },options:{plugins:{legend:{position:'bottom'}},scales:{
+    y:{beginAtZero:true},y1:{position:'right',beginAtZero:true,grid:{drawOnChartArea:false}}
+  }}});
+
+  // ── CONVERSION RATES ────────────────────────────────────────────────────
+  mc('offFunnelChart',{type:'bar',data:{
+    labels:locs,
+    datasets:[
+      {label:'Att% of Targeted', data:d.map(r=>r.targeted>0?+(r.attended/r.targeted*100).toFixed(1):0), backgroundColor:'rgba(79,216,247,.7)',borderRadius:3},
+      {label:'SB% of Attended',  data:d.map(r=>r.attended>0?+(r.sb_seminar/r.attended*100).toFixed(1):0), backgroundColor:'rgba(180,79,231,.7)',borderRadius:3},
+    ]
+  },options:{plugins:{legend:{position:'bottom'}},scales:{x:{ticks:{font:{size:9}}},y:{beginAtZero:true,ticks:{callback:v=>v+'%'}}}}});
+
+  // ── SB BREAKDOWN ────────────────────────────────────────────────────────
+  mc('sbBreakChart',{type:'bar',data:{
+    labels:mk.map(fmtYM),
+    datasets:[
+      {label:'Morning',     data:mk.map(k=>mm[k].sbMo), backgroundColor:'rgba(247,201,72,.8)',borderRadius:3},
+      {label:'Evening',     data:mk.map(k=>mm[k].sbEv), backgroundColor:'rgba(180,79,231,.7)',borderRadius:3},
+      {label:'Non-Webinar', data:mk.map(k=>mm[k].sbNW), backgroundColor:'rgba(79,216,247,.6)',borderRadius:3},
+    ]
+  },options:{plugins:{legend:{position:'bottom'}},scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}}}});
+
+  // ── TOP LOCATIONS BY SURPLUS ────────────────────────────────────────────
+  const locSurp={};
+  d.forEach(r=>{if(!locSurp[r.location])locSurp[r.location]=0;locSurp[r.location]+=r.surplus;});
+  const topLS=Object.entries(locSurp).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  mc('offLocSurplusChart',{type:'bar',data:{
+    labels:topLS.map(([l])=>l.split(' ').slice(0,2).join(' ')),
+    datasets:[{label:'Surplus',data:topLS.map(([,v])=>v),
+      backgroundColor:topLS.map(([,v])=>v>=0?'rgba(79,206,143,.8)':'rgba(247,111,79,.8)'),borderRadius:4}]
+  },options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>fmt(v)}},y:{ticks:{font:{size:10}}}}}});
+
+  // ── PROFITABILITY DONUT ─────────────────────────────────────────────────
+  mc('profitDonutChart',{type:'doughnut',data:{
+    labels:['Profitable ('+profit+')','Loss-making ('+loss+')'],
+    datasets:[{data:[profit,loss],backgroundColor:['rgba(79,206,143,.85)','rgba(247,111,79,.85)'],borderWidth:2,borderColor:'#060910'}]
+  },options:{cutout:'58%',plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:10}}}}});
+
+  // ── ATTENDEE KPIS ────────────────────────────────────────────────────────
+  const AS=ATTENDEE_SUMMARY;
+  const colRate=AS.total_amount>0?(AS.total_revenue/AS.total_amount*100).toFixed(1):'0';
+  const dueRate=AS.total_amount>0?(AS.total_due/AS.total_amount*100).toFixed(1):'0';
+  const activeRate=AS.total_records>0?(AS.active_students/AS.total_records*100).toFixed(0):'0';
+  const kpis2=[
+    {l:'Unique Students',      v:fmt(AS.total_students||0),   s:'Across all locations',           ic:'🎓',c:'var(--a1)',ib:'rgba(79,142,247,.1)'},
+    {l:'Total Records',        v:fmt(AS.total_records||0),    s:'Incl. multiple enrollments',     ic:'📝',c:'var(--t2)',ib:'rgba(138,144,170,.08)'},
+    {l:'Collected',            v:fmt(AS.total_revenue||0),    s:colRate+'% of total billed',      ic:'💰',c:'var(--a2)',ib:'rgba(247,201,72,.1)'},
+    {l:'Total Billed',         v:fmt(AS.total_amount||0),     s:'Before payments',                ic:'📋',c:'var(--a5)',ib:'rgba(180,79,231,.1)'},
+    {l:'Outstanding Due',      v:fmt(AS.total_due||0),        s:dueRate+'% of billed',            ic:'⚠️', c:'var(--a4)',ib:'rgba(247,111,79,.1)'},
+    {l:'Active Students',      v:fmt(AS.active_students||0),  s:activeRate+'% of records',        ic:'✅',c:'var(--a3)',ib:'rgba(79,206,143,.1)'},
+    {l:'Inactive Students',    v:fmt(AS.inactive_students||0),s:'Paused / pending',               ic:'⏸',c:'var(--t2)',ib:'rgba(138,144,170,.08)'},
+    {l:'Closed Students',      v:fmt(AS.closed_students||0),  s:'Completed / dropped',            ic:'🔒',c:'var(--t3)',ib:'rgba(85,93,122,.08)'},
+    {l:'Avg Payment',          v:fmt(AS.avg_payment||0),      s:'Per paying student',             ic:'📊',c:'var(--a3)',ib:'rgba(79,206,143,.1)'},
+    {l:'BCMB Enrollments',     v:fmt((COURSE_TYPE_STATS.BCMB||{count:0}).count), s:fmt((COURSE_TYPE_STATS.BCMB||{revenue:0}).revenue)+' collected',ic:'🔵',c:'var(--a1)',ib:'rgba(79,142,247,.1)'},
+    {l:'INSIGNIA Enrollments', v:fmt((COURSE_TYPE_STATS.INSIGNIA||{count:0}).count),s:fmt((COURSE_TYPE_STATS.INSIGNIA||{revenue:0}).revenue)+' collected',ic:'🟣',c:'var(--a5)',ib:'rgba(180,79,231,.1)'},
+    {l:'Other Courses',        v:fmt(Object.entries(COURSE_TYPE_STATS).filter(([k])=>k!='BCMB'&&k!='INSIGNIA').reduce((s,[,v])=>s+v.count,0)),s:'Equity · F&O · Swing…',ic:'📚',c:'var(--a6)',ib:'rgba(79,216,247,.1)'},
+  ];
+  document.getElementById('attKpis').innerHTML = kpis2.map(k=>`<div class="kpi" style="--kc:${k.c};--kib:${k.ib}"><div class="ki">${k.ic}</div><div class="kl">${k.l}</div><div class="kv">${k.v}</div><div class="ks">${k.s}</div></div>`).join('');
+  const ak2=document.getElementById('attKpis2');
+  if(ak2) ak2.innerHTML=document.getElementById('attKpis').innerHTML;
+
+  // ── LOCATION REVENUE ─────────────────────────────────────────────────────
+  const locE=Object.entries(LOCATION_STATS_ATT).sort((a,b)=>b[1].revenue-a[1].revenue).slice(0,20);
+  mc('offLocRevChart',{type:'bar',data:{
+    labels:locE.map(([l])=>l.split(' ').slice(0,2).join(' ')),
+    datasets:[
+      {label:'Collected',data:locE.map(([,v])=>v.revenue),  backgroundColor:locE.map((_,i)=>COLS[i%COLS.length]+'cc'),borderRadius:4},
+      {label:'Due',      data:locE.map(([,v])=>v.total_due||0),backgroundColor:'rgba(247,111,79,.35)',borderRadius:4},
+    ]
+  },options:{indexAxis:'y',plugins:{legend:{position:'bottom'}},scales:{x:{ticks:{callback:v=>fmt(v)}},y:{ticks:{font:{size:10}}}}}});
+
+  // ── COURSE MIX DOUGHNUT ──────────────────────────────────────────────────
+  const ctK=Object.keys(COURSE_TYPE_STATS);
+  mc('offCourseChart',{type:'doughnut',data:{
+    labels:ctK.map(k=>k+' ('+fmt(COURSE_TYPE_STATS[k].count)+')'),
+    datasets:[{data:ctK.map(k=>COURSE_TYPE_STATS[k].count),
+      backgroundColor:['rgba(79,142,247,.85)','rgba(180,79,231,.85)','rgba(79,206,143,.85)','rgba(247,201,72,.85)','rgba(247,111,79,.85)','rgba(79,216,247,.85)'],
+      borderWidth:2,borderColor:'#060910'}]
+  },options:{cutout:'58%',plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}}}}});
+
+  // ── ATTENDEE TAB CHARTS ──────────────────────────────────────────────────
+  mc('attStatusChart',{type:'doughnut',data:{
+    labels:['Active ('+fmt(AS.active_students||0)+')','Inactive ('+fmt(AS.inactive_students||0)+')','Closed ('+fmt(AS.closed_students||0)+')'],
+    datasets:[{data:[AS.active_students||0,AS.inactive_students||0,AS.closed_students||0],
+      backgroundColor:['rgba(79,206,143,.85)','rgba(247,201,72,.75)','rgba(85,93,122,.75)'],
+      borderWidth:2,borderColor:'#060910'}]
+  },options:{cutout:'55%',plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:10}}}}});
+
+  mc('attCourseRevChart',{type:'bar',data:{
+    labels:ctK,
+    datasets:[
+      {label:'Collected',data:ctK.map(k=>COURSE_TYPE_STATS[k].revenue||0),backgroundColor:COLS.map(c=>c+'cc'),borderRadius:4},
+      {label:'Due',data:ctK.map(k=>COURSE_TYPE_STATS[k].total_due||0),backgroundColor:'rgba(247,111,79,.4)',borderRadius:4},
+    ]
+  },options:{plugins:{legend:{position:'bottom'}},scales:{x:{},y:{beginAtZero:true,ticks:{callback:v=>fmt(v)}}}}});
+
+  const locAll=Object.entries(LOCATION_STATS_ATT).sort((a,b)=>b[1].revenue-a[1].revenue).slice(0,25);
+  mc('attLocChart',{type:'bar',data:{
+    labels:locAll.map(([l])=>l.split(' ').slice(0,2).join(' ')),
+    datasets:[
+      {label:'Students',data:locAll.map(([,v])=>v.students||0),backgroundColor:'rgba(79,142,247,.7)',borderRadius:3,yAxisID:'y1'},
+      {label:'Collected',data:locAll.map(([,v])=>v.revenue||0),backgroundColor:'rgba(79,206,143,.6)',borderRadius:3,yAxisID:'y'},
+    ]
+  },options:{plugins:{legend:{position:'bottom'}},scales:{
+    y:{beginAtZero:true,ticks:{callback:v=>fmt(v)}},
+    y1:{position:'right',beginAtZero:true,grid:{drawOnChartArea:false}}
+  }}});
+
+  // ── SALES TAB CHARTS ─────────────────────────────────────────────────────
+  const srRows=Object.entries(SALES_REP_STATS).map(([n,v])=>({name:n.trim(),...v})).sort((a,b)=>b.revenue-a.revenue).slice(0,15);
+  const totalSalesRev=srRows.reduce((s,r)=>s+r.revenue,0);
+  const totalDeals=srRows.reduce((s,r)=>s+r.deals,0);
+  document.getElementById('salesCount').textContent='· '+srRows.length+' representatives';
+  document.getElementById('salesKpis').innerHTML=[
+    {l:'Sales Reps',    v:Object.keys(SALES_REP_STATS).length, s:'Active representatives',         ic:'👥',c:'var(--a1)',ib:'rgba(79,142,247,.1)'},
+    {l:'Total Deals',   v:fmt(totalDeals),   s:'Across all reps',                                    ic:'🤝',c:'var(--a3)',ib:'rgba(79,206,143,.1)'},
+    {l:'Total Collected',v:fmt(totalSalesRev),s:'Via sales team',                                    ic:'💰',c:'var(--a2)',ib:'rgba(247,201,72,.1)'},
+    {l:'Top Rep Rev',   v:srRows[0]?fmt(srRows[0].revenue):'—', s:srRows[0]?.name||'',              ic:'🏆',c:'var(--a2)',ib:'rgba(247,201,72,.1)'},
+    {l:'Avg Deal Size', v:srRows.length?fmt(totalSalesRev/Math.max(1,totalDeals)):'—', s:'Overall average',ic:'📊',c:'var(--a3)',ib:'rgba(79,206,143,.1)'},
+    {l:'Most Deals',    v:srRows[0]?srRows.sort((a,b)=>b.deals-a.deals)[0].deals:'—',s:srRows[0]?.name||'',ic:'🎯',c:'var(--a5)',ib:'rgba(180,79,231,.1)'},
+  ].map(k=>`<div class="kpi" style="--kc:${k.c};--kib:${k.ib}"><div class="ki">${k.ic}</div><div class="kl">${k.l}</div><div class="kv">${k.v}</div><div class="ks">${k.s}</div></div>`).join('');
+
+  const srTop=Object.entries(SALES_REP_STATS).map(([n,v])=>({name:n.trim(),...v})).sort((a,b)=>b.revenue-a.revenue).slice(0,15);
+  mc('salesRevChart',{type:'bar',data:{
+    labels:srTop.map(r=>r.name.split(' ').slice(0,2).join(' ')),
+    datasets:[{label:'Revenue',data:srTop.map(r=>r.revenue),backgroundColor:srTop.map((_,i)=>COLS[i%COLS.length]+'cc'),borderRadius:4}]
+  },options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>fmt(v)}},y:{ticks:{font:{size:10}}}}}});
+
+  const srDeals=Object.entries(SALES_REP_STATS).map(([n,v])=>({name:n.trim(),...v})).sort((a,b)=>b.deals-a.deals).slice(0,15);
+  mc('salesDealsChart',{type:'bar',data:{
+    labels:srDeals.map(r=>r.name.split(' ').slice(0,2).join(' ')),
+    datasets:[{label:'Deals',data:srDeals.map(r=>r.deals),backgroundColor:'rgba(180,79,231,.75)',borderRadius:4}]
+  },options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{},y:{ticks:{font:{size:10}}}}}});
+
+  // ── TRENDS TAB ───────────────────────────────────────────────────────────
+  const trendsKpisEl=document.getElementById('trendsKpis');
+  if(trendsKpisEl && mk.length>1){
+    const lastMk=mk[mk.length-1], prevMk=mk[mk.length-2];
+    const lastM=mm[lastMk]||{}, prevM=mm[prevMk]||{};
+    const revChg=prevM.rev>0?((lastM.rev-prevM.rev)/prevM.rev*100).toFixed(1):0;
+    const sbChg=prevM.sb>0?((lastM.sb-prevM.sb)/prevM.sb*100).toFixed(1):0;
+    trendsKpisEl.innerHTML=[
+      {l:'Latest Month Rev',    v:fmt(lastM.rev||0), s:fmtYM(lastMk),                              ic:'📅',c:'var(--a2)',ib:'rgba(247,201,72,.1)'},
+      {l:'MoM Rev Change',      v:(revChg>=0?'▲':'▼')+Math.abs(revChg)+'%', s:'vs previous month', ic:'📈',c:revChg>=0?'var(--a3)':'var(--a4)',ib:'rgba(79,206,143,.1)'},
+      {l:'Latest Month SB',     v:fmt(lastM.sb||0),  s:fmtYM(lastMk),                              ic:'🎟',c:'var(--a5)',ib:'rgba(180,79,231,.1)'},
+      {l:'MoM SB Change',       v:(sbChg>=0?'▲':'▼')+Math.abs(sbChg)+'%', s:'vs previous month',  ic:'📉',c:sbChg>=0?'var(--a3)':'var(--a4)',ib:'rgba(79,206,143,.1)'},
+      {l:'Best Month Rev',      v:fmt(Math.max(...mk.map(k=>mm[k].rev))), s:fmtYM(mk.reduce((a,b)=>mm[a].rev>mm[b].rev?a:b)), ic:'🏆',c:'var(--a2)',ib:'rgba(247,201,72,.1)'},
+      {l:'Best Month SB',       v:fmt(Math.max(...mk.map(k=>mm[k].sb))),  s:fmtYM(mk.reduce((a,b)=>mm[a].sb>mm[b].sb?a:b)),  ic:'🎯',c:'var(--a5)',ib:'rgba(180,79,231,.1)'},
+    ].map(k=>`<div class="kpi" style="--kc:${k.c};--kib:${k.ib}"><div class="ki">${k.ic}</div><div class="kl">${k.l}</div><div class="kv">${k.v}</div><div class="ks">${k.s}</div></div>`).join('');
+  }
+
+  mc('revTrendChart',{type:'line',data:{
+    labels:mk.map(fmtYM),
+    datasets:[
+      {label:'Actual Rev',   data:mk.map(k=>mm[k].rev),  borderColor:'#4fce8f',backgroundColor:'rgba(79,206,143,.12)',fill:true,tension:.4,pointRadius:4},
+      {label:'Expenses',     data:mk.map(k=>mm[k].exp),  borderColor:'#f76f4f',backgroundColor:'transparent',tension:.4,pointRadius:4,borderDash:[4,3]},
+      {label:'Net Surplus',  data:mk.map(k=>mm[k].surp), borderColor:'#4f8ef7',backgroundColor:'transparent',tension:.4,pointRadius:4},
+    ]
+  },options:{plugins:{legend:{position:'bottom'}},scales:{x:{},y:{ticks:{callback:v=>fmt(v)}}}}});
+
+  mc('sbTrendChart',{type:'line',data:{
+    labels:mk.map(fmtYM),
+    datasets:[
+      {label:'Morning',     data:mk.map(k=>mm[k].sbMo), borderColor:'#f7c948',backgroundColor:'rgba(247,201,72,.12)',fill:true,tension:.4,pointRadius:4},
+      {label:'Evening',     data:mk.map(k=>mm[k].sbEv), borderColor:'#b44fe7',backgroundColor:'transparent',tension:.4,pointRadius:4},
+      {label:'Non-Webinar', data:mk.map(k=>mm[k].sbNW), borderColor:'#4fd8f7',backgroundColor:'transparent',tension:.4,pointRadius:4,borderDash:[4,3]},
+    ]
+  },options:{plugins:{legend:{position:'bottom'}},scales:{x:{},y:{beginAtZero:true}}}});
+
+  mc('convTrendChart',{type:'line',data:{
+    labels:mk.map(fmtYM),
+    datasets:[
+      {label:'Att%',data:mk.map(k=>{const s=d.filter(r=>r.month===k);const t=s.reduce((a,r)=>a+r.targeted,0);const att=s.reduce((a,r)=>a+r.attended,0);return t>0?+(att/t*100).toFixed(1):0;}),borderColor:'#4fd8f7',backgroundColor:'rgba(79,216,247,.1)',fill:true,tension:.4,pointRadius:4},
+      {label:'SB%', data:mk.map(k=>{const s=d.filter(r=>r.month===k);const att=s.reduce((a,r)=>a+r.attended,0);const sb=s.reduce((a,r)=>a+r.sb_seminar,0);return att>0?+(sb/att*100).toFixed(1):0;}),borderColor:'#b44fe7',backgroundColor:'transparent',tension:.4,pointRadius:4},
+    ]
+  },options:{plugins:{legend:{position:'bottom'}},scales:{x:{},y:{beginAtZero:true,ticks:{callback:v=>v+'%'}}}}});
+
+  mc('roiTrendChart',{type:'bar',data:{
+    labels:mk.map(fmtYM),
+    datasets:[{label:'ROI %',data:mk.map(k=>mm[k].exp>0?+((mm[k].rev-mm[k].exp)/mm[k].exp*100).toFixed(1):0),
+      backgroundColor:mk.map(k=>mm[k].exp>0&&(mm[k].rev-mm[k].exp)>=0?'rgba(79,206,143,.8)':'rgba(247,111,79,.8)'),borderRadius:4}]
+  },options:{plugins:{legend:{display:false}},scales:{x:{},y:{ticks:{callback:v=>v+'%'}}}}});
+
+  mc('countTrendChart',{type:'bar',data:{
+    labels:mk.map(fmtYM),
+    datasets:[
+      {label:'Seminars',data:mk.map(k=>mm[k].events),backgroundColor:'rgba(79,142,247,.75)',borderRadius:4},
+    ]
+  },options:{plugins:{legend:{display:false}},scales:{x:{},y:{beginAtZero:true}}}});
+
+  // Render tables
+  renderSeminarTable();
+  renderAttTable();
+  renderSalesTable();
+  document.getElementById('semDetailCount').textContent='· '+d.length+' seminars';
+  document.getElementById('attDetailCount').textContent='· '+fmt(AS.total_students||0)+' students · '+Object.keys(LOCATION_STATS_ATT).length+' locations';
+}
+
+// ── SEMINAR TABLE ─────────────────────────────────────────────────────────────
+function renderSeminarTable(){
+  const search=(document.getElementById('semSearch')?.value||'').toLowerCase();
+  let d=filteredSeminars.filter(r=>!search||r.location.toLowerCase().includes(search)||r.trainer.toLowerCase().includes(search));
+  const total=d.length;
+  const start=(semPage-1)*SEM_PER_PAGE, end=Math.min(start+SEM_PER_PAGE,total);
+  const page=d.slice(start,end);
+  const pInfo=document.getElementById('semPagInfo');
+  if(pInfo) pInfo.textContent=`Showing ${start+1}–${end} of ${total}`;
+  const totals={targeted:0,attended:0,sb_seminar:0,expenses:0,actual_revenue:0,total_revenue:0,surplus:0};
+  d.forEach(r=>{Object.keys(totals).forEach(k=>totals[k]+=(+r[k]||0));});
+  document.getElementById('offTable').innerHTML=`
+    <table><thead><tr>
+      <th>#</th><th>Date</th><th>Location</th><th>Trainer(s)</th>
+      <th>Targeted</th><th>Attended</th><th>Att%</th>
+      <th>SB</th><th>SB%</th><th>Morning</th><th>Evening</th><th>Non-Web</th>
+      <th>Expenses</th><th>Exp Rev</th><th>Actual Rev</th><th>Total Rev</th>
+      <th>Surplus</th><th>ROI</th>
+    </tr></thead><tbody>
+    ${page.map((r,i)=>{
+      const idx=start+i+1;
+      const attP=r.targeted>0?(r.attended/r.targeted*100).toFixed(0):0;
+      const sbP=r.attended>0?(r.sb_seminar/r.attended*100).toFixed(0):0;
+      const roiN=r.expenses>0?((r.actual_revenue-r.expenses)/r.expenses*100):0;
+      const roiS=r.expenses>0?roiN.toFixed(0)+'%':'—';
+      return`<tr>
+        <td style="color:var(--t3)">${idx}</td>
+        <td style="color:var(--t2)">${r.date||'—'}</td>
+        <td style="color:var(--t1);font-weight:600">${r.location}</td>
+        <td style="color:var(--t2);font-size:10px;max-width:140px;overflow:hidden;text-overflow:ellipsis" title="${r.trainer}">${r.trainer}</td>
+        <td>${r.targeted}</td>
+        <td>${r.attended}</td>
+        <td><span class="bdg ${attP>=40?'bg':attP>=20?'by':'br'}">${attP}%</span></td>
+        <td style="font-weight:700;color:var(--t1)">${r.sb_seminar}</td>
+        <td><span class="bdg ${sbP>=20?'bg':sbP>=12?'by':'br'}">${sbP}%</span></td>
+        <td>${r.sb_morning}</td>
+        <td>${r.sb_evening}</td>
+        <td>${r.sb_non_webinar}</td>
+        <td style="color:var(--a4)">${fmt(r.expenses)}</td>
+        <td style="color:var(--t3)">${r.expected_revenue?fmt(r.expected_revenue):'—'}</td>
+        <td style="color:var(--a2);font-weight:600">${fmt(r.actual_revenue)}</td>
+        <td style="color:var(--a3)">${fmt(r.total_revenue)}</td>
+        <td><span class="bdg ${r.surplus>0?'bg':'br'}">${r.surplus>=0?'':'-'}${fmt(Math.abs(r.surplus))}</span></td>
+        <td><span class="bdg ${roiN>=50?'bg':roiN>=0?'by':'br'}">${roiS}</span></td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+    <tfoot><tr class="tfoot-row">
+      <td colspan="4" style="color:var(--a2);font-weight:700">TOTALS (filtered: ${total})</td>
+      <td>${fmt(totals.targeted)}</td><td>${fmt(totals.attended)}</td><td></td>
+      <td>${fmt(totals.sb_seminar)}</td><td></td><td></td><td></td><td></td>
+      <td style="color:var(--a4)">${fmt(totals.expenses)}</td><td></td>
+      <td style="color:var(--a2)">${fmt(totals.actual_revenue)}</td>
+      <td style="color:var(--a3)">${fmt(totals.total_revenue)}</td>
+      <td><span class="bdg ${totals.surplus>=0?'bg':'br'}">${fmt(totals.surplus)}</span></td>
+      <td></td>
+    </tr></tfoot>
+    </table>`;
+  renderPagination('semPagination', total, SEM_PER_PAGE, semPage, p=>{semPage=p;renderSeminarTable();});
+}
+
+// ── ATTENDEE TABLE ─────────────────────────────────────────────────────────
+function renderAttTable(){
+  const search=(document.getElementById('attSearch')?.value||'').toLowerCase();
+  let locRows=Object.entries(LOCATION_STATS_ATT).map(([loc,v])=>({loc,...v})).filter(r=>!search||r.loc.toLowerCase().includes(search));
+  locRows.sort((a,b)=>b.revenue-a.revenue);
+  const total=locRows.length;
+  const start=(attPage-1)*ATT_PER_PAGE, end=Math.min(start+ATT_PER_PAGE,total);
+  const page=locRows.slice(start,end);
+  const pInfo=document.getElementById('attPagInfo');
+  if(pInfo) pInfo.textContent=`Showing ${start+1}–${end} of ${total} locations`;
+  document.getElementById('attTable').innerHTML=`
+    <table><thead><tr>
+      <th>#</th><th>Location</th><th>Students</th><th>Collected</th><th>Outstanding Due</th><th>Active</th><th>Active %</th><th>Collection Rate</th>
+    </tr></thead><tbody>
+    ${page.map((r,i)=>{
+      const ar=r.students>0?(r.active/r.students*100).toFixed(0):0;
+      const cr=(r.revenue+r.total_due)>0?(r.revenue/(r.revenue+(r.total_due||0))*100).toFixed(0):100;
+      return`<tr>
+        <td style="color:var(--t3)">${start+i+1}</td>
+        <td style="color:var(--t1);font-weight:600">${r.loc}</td>
+        <td style="color:var(--a1)">${fmt(r.students||0)}</td>
+        <td style="color:var(--a2);font-weight:700">${fmt(r.revenue||0)}</td>
+        <td style="color:var(--a4)">${fmt(r.total_due||0)}</td>
+        <td style="color:var(--a3)">${fmt(r.active||0)}</td>
+        <td><span class="bdg ${ar>=70?'bg':ar>=50?'by':'br'}">${ar}%</span></td>
+        <td><span class="bdg ${cr>=80?'bg':cr>=60?'by':'br'}">${cr}%</span></td>
+      </tr>`;
+    }).join('')}
+    </tbody></table>`;
+  renderPagination('attPagination', total, ATT_PER_PAGE, attPage, p=>{attPage=p;renderAttTable();});
+}
+
+// ── SALES TABLE ───────────────────────────────────────────────────────────
+function renderSalesTable(){
+  const search=(document.getElementById('salesSearch')?.value||'').toLowerCase();
+  let rows=Object.entries(SALES_REP_STATS).map(([n,v])=>({name:n.trim(),...v})).sort((a,b)=>b.revenue-a.revenue).filter(r=>!search||r.name.toLowerCase().includes(search));
+  const total=rows.length;
+  const start=(salesPage-1)*SALES_PER_PAGE, end=Math.min(start+SALES_PER_PAGE,total);
+  const page=rows.slice(start,end);
+  const pInfo=document.getElementById('salesPagInfo');
+  if(pInfo) pInfo.textContent=`Showing ${start+1}–${end} of ${total} reps`;
+  document.getElementById('offSalesTable').innerHTML=`
+    <table><thead><tr>
+      <th>Rank</th><th>Sales Rep</th><th>Deals</th>
+      <th>Revenue Collected</th><th>Active</th><th>Active %</th><th>Avg Deal</th><th>Revenue Share</th>
+    </tr></thead><tbody>
+    ${page.map((r,i)=>{
+      const rank=start+i+1;
+      const ar=(r.active/Math.max(1,r.deals)*100).toFixed(0);
+      const totalR=Object.values(SALES_REP_STATS).reduce((s,v)=>s+v.revenue,0);
+      const share=totalR>0?(r.revenue/totalR*100).toFixed(1):0;
+      return`<tr>
+        <td><span class="rnk ${rank<=3?'r'+rank:''}">${rank}</span></td>
+        <td style="color:var(--t1);font-weight:600">${r.name}</td>
+        <td style="color:var(--t2)">${r.deals}</td>
+        <td style="color:var(--a2);font-weight:700">${fmt(r.revenue)}</td>
+        <td style="color:var(--a3)">${r.active}</td>
+        <td><span class="bdg ${ar>=70?'bg':ar>=50?'by':'br'}">${ar}%</span></td>
+        <td>${fmt(r.avg_deal)}</td>
+        <td><div style="display:flex;align-items:center;gap:6px"><span style="min-width:32px;font-size:11px">${share}%</span><div class="mb" style="width:60px"><div class="mbf" style="width:${share}%;background:linear-gradient(90deg,var(--a2),var(--a3))"></div></div></div></td>
+      </tr>`;
+    }).join('')}
+    </tbody></table>`;
+  renderPagination('salesPagination', total, SALES_PER_PAGE, salesPage, p=>{salesPage=p;renderSalesTable();});
+}
+
+// ── PAGINATION ────────────────────────────────────────────────────────────
+function renderPagination(containerId, total, perPage, current, onPage){
+  const totalPages=Math.ceil(total/perPage);
+  if(totalPages<=1){document.getElementById(containerId).innerHTML='';return;}
+  let html='';
+  const win=2;
+  html+=`<button class="pg-btn" onclick="(${onPage.toString()})(${Math.max(1,current-1)})" ${current===1?'disabled':''}>‹</button>`;
+  for(let p=1;p<=totalPages;p++){
+    if(p===1||p===totalPages||Math.abs(p-current)<=win){
+      html+=`<button class="pg-btn ${p===current?'active':''}" onclick="(${onPage.toString()})(${p})">${p}</button>`;
+    } else if(Math.abs(p-current)===win+1){
+      html+=`<span class="pg-info">…</span>`;
+    }
+  }
+  html+=`<button class="pg-btn" onclick="(${onPage.toString()})(${Math.min(totalPages,current+1)})" ${current===totalPages?'disabled':''}>›</button>`;
+  document.getElementById(containerId).innerHTML=html;
+}
+
+// ── EXPORT FUNCTIONS ──────────────────────────────────────────────────────────
+function escCSV(v){
+  const s=String(v===undefined||v===null?'':v);
+  return s.includes(',')||s.includes('"')||s.includes('\n') ? '"'+s.replace(/"/g,'""')+'"' : s;
+}
+function downloadCSV(rows, filename){
+  const csv=rows.map(r=>r.map(escCSV).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=filename; a.click();
+  showToast('✅ CSV exported: '+filename);
+}
+function downloadTSV(rows, filename){
+  const tsv=rows.map(r=>r.join('\t')).join('\n');
+  const blob=new Blob([tsv],{type:'text/tab-separated-values;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=filename; a.click();
+  showToast('✅ Excel (TSV) exported: '+filename);
+}
+
+function exportSeminarsCSV(){
+  const d=filteredSeminars;
+  const header=['#','Date','Month','Location','Trainer','Targeted','Attended','Att%','Day-SB','SB%','Morning-SB','Evening-SB','Non-Webinar-SB','Expenses','Expected-Revenue','Actual-Revenue','Total-Revenue','Surplus','ROI%'];
+  const rows=d.map((r,i)=>{
+    const ap=r.targeted>0?(r.attended/r.targeted*100).toFixed(1):0;
+    const sp=r.attended>0?(r.sb_seminar/r.attended*100).toFixed(1):0;
+    const roi=r.expenses>0?((r.actual_revenue-r.expenses)/r.expenses*100).toFixed(1):0;
+    return[i+1,r.date,r.month,r.location,r.trainer,r.targeted,r.attended,ap,r.sb_seminar,sp,r.sb_morning,r.sb_evening,r.sb_non_webinar,r.expenses,r.expected_revenue||0,r.actual_revenue,r.total_revenue,r.surplus,roi];
+  });
+  downloadCSV([header,...rows],'invesmate_seminars_'+new Date().toISOString().slice(0,10)+'.csv');
+}
+
+function exportSeminarsXLSX(){
+  const d=filteredSeminars;
+  const header=['#','Date','Month','Location','Trainer','Targeted','Attended','Att%','Day-SB','SB%','Morning-SB','Evening-SB','Non-Webinar-SB','Expenses','Expected-Revenue','Actual-Revenue','Total-Revenue','Surplus','ROI%'];
+  const rows=d.map((r,i)=>{
+    const ap=r.targeted>0?(r.attended/r.targeted*100).toFixed(1):0;
+    const sp=r.attended>0?(r.sb_seminar/r.attended*100).toFixed(1):0;
+    const roi=r.expenses>0?((r.actual_revenue-r.expenses)/r.expenses*100).toFixed(1):0;
+    return[i+1,r.date,r.month,r.location,r.trainer,r.targeted,r.attended,ap,r.sb_seminar,sp,r.sb_morning,r.sb_evening,r.sb_non_webinar,r.expenses,r.expected_revenue||0,r.actual_revenue,r.total_revenue,r.surplus,roi];
+  });
+  downloadTSV([header,...rows],'invesmate_seminars_'+new Date().toISOString().slice(0,10)+'.xls');
+}
+
+function exportStudentsCSV(){
+  const header=['#','Location','Total Students','Collected (₹)','Outstanding Due (₹)','Active','Active %','Collection Rate %'];
+  const rows=Object.entries(LOCATION_STATS_ATT).sort((a,b)=>b[1].revenue-a[1].revenue).map(([loc,v],i)=>{
+    const ar=v.students>0?((v.active||0)/v.students*100).toFixed(1):0;
+    const cr=(v.revenue+(v.total_due||0))>0?(v.revenue/(v.revenue+(v.total_due||0))*100).toFixed(1):100;
+    return[i+1,loc,v.students||0,Math.round(v.revenue||0),Math.round(v.total_due||0),v.active||0,ar,cr];
+  });
+  // Add course-wise breakdown
+  const courseHeader=['','COURSE BREAKDOWN','','','','','',''];
+  const courseRows=Object.entries(COURSE_TYPE_STATS).map(([k,v])=>['',k,v.count||0,Math.round(v.revenue||0),Math.round(v.total_due||0),v.active||0,'','']);
+  downloadCSV([header,...rows,[],courseHeader,...courseRows],'invesmate_student_list_'+new Date().toISOString().slice(0,10)+'.csv');
+}
+
+function exportStudentsXLSX(){
+  const header=['#','Location','Total Students','Collected (INR)','Outstanding Due (INR)','Active','Active %','Collection Rate %'];
+  const rows=Object.entries(LOCATION_STATS_ATT).sort((a,b)=>b[1].revenue-a[1].revenue).map(([loc,v],i)=>{
+    const ar=v.students>0?((v.active||0)/v.students*100).toFixed(1):0;
+    const cr=(v.revenue+(v.total_due||0))>0?(v.revenue/(v.revenue+(v.total_due||0))*100).toFixed(1):100;
+    return[i+1,loc,v.students||0,Math.round(v.revenue||0),Math.round(v.total_due||0),v.active||0,ar,cr];
+  });
+  downloadTSV([header,...rows],'invesmate_student_list_'+new Date().toISOString().slice(0,10)+'.xls');
+}
+
+function exportSalesRepCSV(){
+  const header=['Rank','Sales Rep','Total Deals','Revenue Collected (₹)','Active Students','Active %','Avg Deal Size (₹)','Revenue Share %'];
+  const totalR=Object.values(SALES_REP_STATS).reduce((s,v)=>s+v.revenue,0);
+  const rows=Object.entries(SALES_REP_STATS).sort((a,b)=>b[1].revenue-a[1].revenue).map(([n,v],i)=>{
+    const ar=(v.active/Math.max(1,v.deals)*100).toFixed(1);
+    const share=totalR>0?(v.revenue/totalR*100).toFixed(2):0;
+    return[i+1,n.trim(),v.deals,Math.round(v.revenue),v.active,ar,Math.round(v.avg_deal),share];
+  });
+  downloadCSV([header,...rows],'invesmate_sales_rep_'+new Date().toISOString().slice(0,10)+'.csv');
+}
+
+function exportAllDataJSON(){
+  const payload={
+    exported_at:new Date().toISOString(),
+    seminars:filteredSeminars,
+    attendee_summary:ATTENDEE_SUMMARY,
+    course_type_stats:COURSE_TYPE_STATS,
+    sales_rep_stats:SALES_REP_STATS,
+    location_stats:LOCATION_STATS_ATT,
+  };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='invesmate_offline_full_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  showToast('✅ Full JSON exported');
+}
+
+function exportChart(canvasId, name){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas){showToast('❌ Chart not found');return;}
+  const a=document.createElement('a');
+  a.href=canvas.toDataURL('image/png');
+  a.download='invesmate_'+name+'_'+new Date().toISOString().slice(0,10)+'.png';
+  a.click();
+  showToast('✅ Chart saved: '+name+'.png');
+}
+
+// ── TAB SWITCHING ─────────────────────────────────────────────────────────
+let activeTab='overview';
+function switchTab(name,el){
+  document.querySelectorAll('.ntab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name)?.classList.add('active');
+  if(el) el.classList.add('active');
+  activeTab=name;
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+initFilters();
+document.getElementById('dtFrom').addEventListener('change',()=>{document.getElementById('fYear').value='';renderOffline();});
+document.getElementById('dtTo').addEventListener('change',()=>{document.getElementById('fYear').value='';renderOffline();});
+document.getElementById('fYear').addEventListener('change',renderOffline);
+renderOffline();
+</script>
+</body>
+</html>
