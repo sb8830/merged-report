@@ -253,3 +253,20 @@ def check_secrets_configured() -> tuple:
     except Exception:
         missing = ["MS_EMAIL", "MS_PASSWORD"]
     return len(missing) == 0, missing
+
+
+def check_share_urls_configured() -> dict:
+    """Returns {secret_name: bool} for each SHARE_URL_* secret."""
+    share_secrets = [
+        "SHARE_URL_WEBINAR",
+        "SHARE_URL_SEMINAR_UPDATE",
+        "SHARE_URL_CONVERSION",
+        "SHARE_URL_LEADS",
+    ]
+    result = {}
+    for s in share_secrets:
+        try:
+            result[s] = bool(st.secrets.get(s, "").strip())
+        except Exception:
+            result[s] = False
+    return result
