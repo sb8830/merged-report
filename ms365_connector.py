@@ -1,13 +1,12 @@
 """
 ms365_connector.py  —  SharePoint connector using Microsoft account credentials
 
-Supports 6 Excel files fetched via SharePoint "Anyone with link" share URLs:
-  - SHARE_URL_WEBINAR        → Free Class Lead Report (BCMB + INSIGNIA)
-  - SHARE_URL_SEMINAR        → Offline Seminar Report
-  - SHARE_URL_ATTENDEE       → Offline Indepth Details
-  - SHARE_URL_SEMINAR_UPDATE → Seminar Updated Files
-  - SHARE_URL_CONVERSION     → Conversion List
-  - SHARE_URL_LEADS          → Leads
+Fixes applied:
+- Convert old OneDrive-style user IDs like admin_admininvesmate360_onmicrosoft_com
+  into Graph-compatible UPNs like admin@admininvesmate360.onmicrosoft.com.
+- Support SHARE_URL_* secrets as the primary resilient fetch path.
+- Correct Graph share URL encoding.
+- Improve search fallback and token error handling.
 """
 
 import base64
@@ -15,30 +14,21 @@ import io
 import requests
 import streamlit as st
 
-_TENANT    = "admininvesmate360.onmicrosoft.com"
+_TENANT = "admininvesmate360.onmicrosoft.com"
 _CLIENT_ID = "d3590ed6-52b3-4102-aeff-aad2292ab01c"
 
 _FILES = {
+    # Online dashboard
     "webinar": {
         "name":         "Free Class Lead Report.xlsx",
         "user":         "admin_admininvesmate360_onmicrosoft_com",
         "item_id":      "B4E16F58-734E-403A-8F5E-3E60656AF593",
         "share_secret": "SHARE_URL_WEBINAR",
     },
-    "seminar": {
-        "name":         "Offline Seminar Report.xlsx",
-        "user":         "admin_admininvesmate360_onmicrosoft_com",
-        "item_id":      "A4283220-7EF3-49B5-87DD-B7FD023D436D",
-        "share_secret": "SHARE_URL_SEMINAR",
-    },
-    "attendee": {
-        "name":         "Offline Indepth Details.xlsx",
-        "user":         "sourajpal_invesmate_com",
-        "share_secret": "SHARE_URL_ATTENDEE",
-    },
+    # Offline dashboard — 3 files for student matching
     "seminar_updated": {
-        "name":         "Seminar Updated Files.xlsx",
-        "user":         "",          # SharePoint team site — share URL is primary
+        "name":         "Seminar Updated Sheet.xlsx",
+        "user":         "admin_admininvesmate360_onmicrosoft_com",
         "share_secret": "SHARE_URL_SEMINAR_UPDATE",
     },
     "conversion": {
@@ -61,8 +51,8 @@ def _safe_json(resp: requests.Response) -> dict:
         return {}
 
 
+
 def _graph_user_id(raw: str) -> str:
-    """Convert OneDrive-style user IDs to Graph-compatible UPNs."""
     raw = (raw or "").strip()
     if not raw or "@" in raw:
         return raw
@@ -72,6 +62,7 @@ def _graph_user_id(raw: str) -> str:
     return raw
 
 
+
 def _get_secret(name: str) -> str:
     try:
         return st.secrets.get(name, "").strip()
@@ -79,15 +70,16 @@ def _get_secret(name: str) -> str:
         return ""
 
 
+
 def _encode_share_url(share_url: str) -> str:
-    encoded = (base64.urlsafe_b64encode(share_url.encode("utf-8"))
-               .decode("utf-8").rstrip("="))
+    encoded = base64.urlsafe_b64encode(share_url.encode("utf-8")).decode("utf-8").rstrip("=")
     return "u!" + encoded
+
 
 
 def _get_token() -> str:
     try:
-        email    = st.secrets["MS_EMAIL"].strip()
+        email = st.secrets["MS_EMAIL"].strip()
         password = st.secrets["MS_PASSWORD"].strip()
     except KeyError as e:
         raise ConnectionError(
@@ -99,17 +91,17 @@ def _get_token() -> str:
         f"https://login.microsoftonline.com/{_TENANT}/oauth2/v2.0/token",
         data={
             "grant_type": "password",
-            "client_id":  _CLIENT_ID,
-            "username":   email,
-            "password":   password,
-            "scope":      "https://graph.microsoft.com/.default offline_access",
+            "client_id": _CLIENT_ID,
+            "username": email,
+            "password": password,
+            "scope": "https://graph.microsoft.com/.default offline_access",
         },
         timeout=20,
     )
-    body  = _safe_json(resp)
+    body = _safe_json(resp)
 
     if resp.status_code != 200:
-        err   = body.get("error_description") or body.get("error") or resp.text
+        err = body.get("error_description") or body.get("error") or resp.text
         err_l = err.lower()
         if "aadsts50126" in err_l or "aadsts50034" in err_l:
             raise ConnectionError(
@@ -119,12 +111,14 @@ def _get_token() -> str:
         if "aadsts53003" in err_l or "conditional" in err_l:
             raise ConnectionError(
                 "❌ Conditional Access policy is blocking sign-in.\n"
-                "Ask your admin to exclude this app from the Conditional Access policy."
+                "Ask your admin to exclude this app from the Conditional Access policy,\n"
+                "or switch to Azure App Registration auth."
             )
         if "aadsts7000218" in err_l:
             raise ConnectionError(
                 "❌ Client not allowed to use ROPC flow.\n"
-                "Enable public client flows in Azure App Registration."
+                "Enable public client flows in Azure App Registration,\n"
+                "or switch to Azure App Registration auth."
             )
         raise ConnectionError(f"❌ Authentication failed:\n{err[:500]}")
 
@@ -132,6 +126,7 @@ def _get_token() -> str:
     if not token:
         raise ConnectionError("❌ Authentication succeeded but no access token was returned.")
     return token
+
 
 
 def _is_excel(resp: requests.Response) -> bool:
@@ -142,6 +137,7 @@ def _is_excel(resp: requests.Response) -> bool:
         or ("octet-stream" in ct and resp.content[:4] == b"PK\x03\x04")
         or resp.content[:4] == b"PK\x03\x04"
     )
+
 
 
 def _download_from_share_url(token: str, share_url: str) -> io.BytesIO | None:
@@ -158,6 +154,7 @@ def _download_from_share_url(token: str, share_url: str) -> io.BytesIO | None:
     return None
 
 
+
 def _download_by_item_id(token: str, user: str, item_id: str) -> io.BytesIO | None:
     if not user or not item_id:
         return None
@@ -170,6 +167,7 @@ def _download_by_item_id(token: str, user: str, item_id: str) -> io.BytesIO | No
     if resp.status_code == 200 and _is_excel(resp):
         return io.BytesIO(resp.content)
     return None
+
 
 
 def _download_by_search(token: str, user: str, filename: str) -> io.BytesIO | None:
@@ -201,28 +199,30 @@ def _download_by_search(token: str, user: str, filename: str) -> io.BytesIO | No
     return None
 
 
+
 def _download(token: str, file_key: str) -> io.BytesIO:
-    meta      = _FILES[file_key]
-    name      = meta["name"]
-    user      = _graph_user_id(meta.get("user", ""))
+    meta = _FILES[file_key]
+    name = meta["name"]
+    user = _graph_user_id(meta.get("user", ""))
     share_url = _get_secret(meta.get("share_secret", ""))
 
-    # 1) Most robust: share URL from secrets
+    # 1) Most robust: share URL from secrets.
     data = _download_from_share_url(token, share_url)
     if data is not None:
         return data
 
-    # 2) Existing item ID
+    # 2) Existing item ID.
     data = _download_by_item_id(token, user, meta.get("item_id", ""))
     if data is not None:
         return data
 
-    # 3) Search by exact filename in owner drive
+    # 3) Search by exact filename in owner drive.
     data = _download_by_search(token, user, name)
     if data is not None:
         return data
 
-    # 4) Try signed-in account as fallback
+    # 4) For webinar/seminar files stored in the same account as MS_EMAIL,
+    #    try the signed-in account directly as an extra fallback.
     me_user = _get_secret("MS_EMAIL")
     if me_user and me_user != user:
         data = _download_by_search(token, me_user, name)
@@ -232,28 +232,19 @@ def _download(token: str, file_key: str) -> io.BytesIO:
     raise FileNotFoundError(
         f"❌ File '{name}' could not be fetched from Microsoft 365.\n"
         "Tried: SHARE_URL secret, item ID, and filename search.\n"
-        f"Ensure the secret '{meta['share_secret']}' is set in Streamlit Cloud Secrets."
+        "Most likely the old item ID/user mapping is stale.\n"
+        "Add the latest SHARE_URL_* secret for this file in Streamlit Cloud Secrets."
     )
 
 
 @st.cache_data(ttl=0, show_spinner=False)
 def fetch_excel_files(_cache_bust: int = 0) -> dict:
-    """
-    Fetch all 6 Excel files from Microsoft 365.
-    Returns a dict with keys:
-      webinar, seminar, attendee, seminar_updated, conversion, leads
-    Each value is an io.BytesIO of the Excel file.
-    """
     token = _get_token()
     return {key: _download(token, key) for key in _FILES}
 
 
+
 def check_secrets_configured() -> tuple:
-    """
-    Returns (ok: bool, missing: list[str]).
-    Checks that at minimum MS_EMAIL and MS_PASSWORD are set,
-    plus warns if any SHARE_URL_* secrets are missing.
-    """
     missing = []
     try:
         for key in ["MS_EMAIL", "MS_PASSWORD"]:
@@ -262,24 +253,3 @@ def check_secrets_configured() -> tuple:
     except Exception:
         missing = ["MS_EMAIL", "MS_PASSWORD"]
     return len(missing) == 0, missing
-
-
-def check_share_urls_configured() -> dict:
-    """
-    Returns a dict of {secret_name: bool} for each SHARE_URL_* secret.
-    """
-    share_secrets = [
-        "SHARE_URL_WEBINAR",
-        "SHARE_URL_SEMINAR",
-        "SHARE_URL_ATTENDEE",
-        "SHARE_URL_SEMINAR_UPDATE",
-        "SHARE_URL_CONVERSION",
-        "SHARE_URL_LEADS",
-    ]
-    result = {}
-    for s in share_secrets:
-        try:
-            result[s] = bool(st.secrets.get(s, "").strip())
-        except Exception:
-            result[s] = False
-    return result
