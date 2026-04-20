@@ -9,7 +9,11 @@ import json, os, hashlib, secrets
 from pathlib import Path
 from PIL import Image
 from data_processor import process_all
-from ms365_connector import fetch_excel_files, check_secrets_configured, check_share_urls_configured
+try:
+    from ms365_connector import fetch_excel_files, check_secrets_configured
+except ImportError as _ms_err:
+    st.error(f"ms365_connector import error: {_ms_err}")
+    st.stop()
 
 # ─── PAGE CONFIG ──────────────────────────────────────────────────────────────
 def _get_page_icon():
@@ -391,7 +395,11 @@ def show_home():
 
 
 def _show_ms365_setup():
-    share_status = check_share_urls_configured()
+    try:
+        from ms365_connector import check_share_urls_configured
+        share_status = check_share_urls_configured()
+    except Exception:
+        share_status = {}
     ok, missing  = check_secrets_configured()
     st.markdown("""
 **Add to Streamlit Cloud → App Settings → Secrets:**
