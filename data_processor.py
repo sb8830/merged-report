@@ -424,12 +424,17 @@ def parse_offline_files(seminar_updated_file, conversion_file, leads_file,
 
         if not all_orders.empty:
             entry['primary_status'] = normalize_status(all_orders.iloc[-1]['status_clean'])
-            entry['converted'] = True
+            # Only mark converted if at least one order has payment > 0
+            paid_orders = all_orders[all_orders['paid_amount'] > 0]
+            entry['converted'] = len(paid_orders) > 0
 
             valid_after = (all_orders[all_orders['order_date_clean'] >= sem_dt]
                            if pd.notna(sem_dt) and all_orders['order_date_clean'].notna().any()
                            else pd.DataFrame())
             primary_pool = valid_after if not valid_after.empty else all_orders
+            # For primary selection, prefer paid orders
+            if not primary_pool[primary_pool['paid_amount'] > 0].empty:
+                primary_pool = primary_pool[primary_pool['paid_amount'] > 0]
             pti_pool     = primary_pool[primary_pool['service_name_clean'].str.contains(COMBO_MATCH, na=False, case=False)]
             primary      = pti_pool.iloc[0] if not pti_pool.empty else primary_pool.iloc[0]
 
@@ -568,27 +573,72 @@ def parse_offline_files(seminar_updated_file, conversion_file, leads_file,
         monthly[m]['seat_amount'] += s['seat_book_amount']
     monthly = dict(sorted(monthly.items()))
 
+    # Extra counts for KPIs
+    n_attended    = sum(1 for s in student_rows if s['attended'])
+    n_seat_booked = sum(1 for s in student_rows if s['seat_booked'])
+    n_fully_paid  = sum(1 for s in student_rows if s['converted'] and s['primary_due'] <= 0)
+    n_has_due     = sum(1 for s in student_rows if s['converted'] and s['primary_due'] > 0)
+    n_webinar     = sum(1 for s in student_rows if s.get('webinar_type') == 'Webinar')
+    n_non_webinar = sum(1 for s in student_rows if s.get('webinar_type') == 'Non Webinar')
+    n_attempted   = sum(1 for s in student_rows if s.get('attempted') == 'Attempted')
+    n_unattempted = sum(1 for s in student_rows if s.get('attempted') == 'Unattempted')
+    n_add_rev     = round(sum(s['additional_paid'] for s in student_rows), 2)
+
+    # Unique seminars = unique (date, place) pairs
+    num_seminars  = len(set((s['seminar_date'], s['place']) for s in student_rows))
+    # Unique locations
+    num_locations = len(set(s['place'] for s in student_rows if s['place']))
+
+    # Lead status breakdown
+    lead_status_stats = {}
+    for s in student_rows:
+        ls = s.get('lead_status') or 'Unknown'
+        if ls in ('', 'nan'): ls = 'Unknown'
+        if ls not in lead_status_stats:
+            lead_status_stats[ls] = {'count': 0, 'converted': 0}
+        lead_status_stats[ls]['count']    += 1
+        lead_status_stats[ls]['converted']+= 1 if s['converted'] else 0
+
+    # Campaign breakdown
+    campaign_stats = {}
+    for s in student_rows:
+        cp = s.get('campaign_name') or ''
+        if cp in ('', 'nan'): continue
+        if cp not in campaign_stats:
+            campaign_stats[cp] = {'count': 0, 'converted': 0, 'revenue': 0.0}
+        campaign_stats[cp]['count']    += 1
+        campaign_stats[cp]['converted']+= 1 if s['converted'] else 0
+        campaign_stats[cp]['revenue']  += s['primary_paid']
+
     agg = {
         'total_attendees':    total,
+        'num_attended':       n_attended,
+        'num_seat_booked':    n_seat_booked,
+        'num_seminars':       num_seminars,
+        'num_locations':      num_locations,
         'converted':          conv_count,
-        'conversion_rate':    round(conv_count/total*100,1) if total else 0,
-        'total_paid':         round(t_paid,2),
-        'total_due':          round(t_due,2),
-        'seat_book_count':    sum(1 for s in student_rows if s['seat_booked']),
-        'seat_book_amount':   round(sum(s['seat_book_amount'] for s in student_rows),2),
-        'fully_paid':         sum(1 for s in student_rows if s['converted'] and s['primary_due']<=0),
-        'has_due':            sum(1 for s in student_rows if s['converted'] and s['primary_due']>0),
-        'additional_revenue': round(sum(s['additional_paid'] for s in student_rows),2),
-        'avg_paid':           round(t_paid/conv_count,2) if conv_count else 0,
-        'webinar_leads':      sum(1 for s in student_rows if s.get('webinar_type')=='Webinar'),
-        'non_webinar_leads':  sum(1 for s in student_rows if s.get('webinar_type')=='Non Webinar'),
-        'attempted':          sum(1 for s in student_rows if s.get('attempted')=='Attempted'),
-        'unattempted':        sum(1 for s in student_rows if s.get('attempted')=='Unattempted'),
+        'conversion_rate':    round(conv_count / n_seat_booked * 100, 1) if n_seat_booked else 0,
+        'attended_rate':      round(n_attended / total * 100, 1) if total else 0,
+        'seat_to_conv_rate':  round(conv_count / n_seat_booked * 100, 1) if n_seat_booked else 0,
+        'total_paid':         round(t_paid, 2),
+        'total_due':          round(t_due, 2),
+        'seat_book_count':    n_seat_booked,
+        'seat_book_amount':   round(sum(s['seat_book_amount'] for s in student_rows), 2),
+        'fully_paid':         n_fully_paid,
+        'has_due':            n_has_due,
+        'additional_revenue': n_add_rev,
+        'avg_paid':           round(t_paid / conv_count, 2) if conv_count else 0,
+        'webinar_leads':      n_webinar,
+        'non_webinar_leads':  n_non_webinar,
+        'attempted':          n_attempted,
+        'unattempted':        n_unattempted,
         'unique_courses':     len(course_stats),
         'course_stats':       course_stats,
         'sales_rep_stats':    sr_stats,
         'location_stats':     loc_stats,
         'lead_source_stats':  lead_src_stats,
+        'lead_status_stats':  lead_status_stats,
+        'campaign_stats':     campaign_stats,
         'stage_stats':        stage_stats,
         'trainer_stats':      trainer_stats,
         'monthly_trend':      monthly,
