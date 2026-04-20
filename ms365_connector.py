@@ -1,14 +1,12 @@
 """
 ms365_connector.py  —  SharePoint / Microsoft 365 file fetcher
+Compatible with Python 3.9+
 
-Fetches 4 Excel files used by the Invesmate Analytics Dashboard:
-  webinar         → Free Class Lead Report      (BCMB + INSIGNIA online data)
-  seminar_updated → Seminar Updated Sheet        (attendance, seat bookings)
-  conversion      → Conversion List              (orders, payments, courses)
-  leads           → Leads Report                 (lead source, campaign, stage)
-
-Primary fetch strategy: SharePoint "Anyone with link" share URLs stored in
-Streamlit Secrets. Falls back to Graph API item-ID lookup, then filename search.
+Fetches 4 Excel files:
+  webinar         -> Free Class Lead Report      (BCMB + INSIGNIA)
+  seminar_updated -> Seminar Updated Sheet        (attendance, seat bookings)
+  conversion      -> Conversion List              (orders, payments)
+  leads           -> Leads Report                 (lead source, campaign, stage)
 """
 
 import base64
@@ -16,11 +14,9 @@ import io
 import requests
 import streamlit as st
 
-# ── Tenant / app constants ────────────────────────────────────────────────────
 _TENANT    = "admininvesmate360.onmicrosoft.com"
 _CLIENT_ID = "d3590ed6-52b3-4102-aeff-aad2292ab01c"
 
-# ── File registry ─────────────────────────────────────────────────────────────
 _FILES = {
     "webinar": {
         "name":         "Free Class Lead Report.xlsx",
@@ -45,7 +41,6 @@ _FILES = {
     },
 }
 
-# ── Internal helpers ──────────────────────────────────────────────────────────
 
 def _safe_json(resp):
     try:
@@ -55,7 +50,6 @@ def _safe_json(resp):
 
 
 def _graph_user_id(raw):
-    """Convert OneDrive-style ID  admin_tenant_onmicrosoft_com  →  admin@tenant.onmicrosoft.com"""
     raw = (raw or "").strip()
     if not raw or "@" in raw:
         return raw
@@ -87,12 +81,12 @@ def _get_token():
         password = st.secrets["MS_PASSWORD"].strip()
     except KeyError as e:
         raise ConnectionError(
-            f"Missing secret: {e}. "
-            "Add MS_EMAIL and MS_PASSWORD in Streamlit Cloud → App Settings → Secrets."
+            "Missing secret: {}. "
+            "Add MS_EMAIL and MS_PASSWORD in Streamlit Cloud Secrets.".format(e)
         )
 
     resp = requests.post(
-        f"https://login.microsoftonline.com/{_TENANT}/oauth2/v2.0/token",
+        "https://login.microsoftonline.com/{}/oauth2/v2.0/token".format(_TENANT),
         data={
             "grant_type": "password",
             "client_id":  _CLIENT_ID,
@@ -113,7 +107,7 @@ def _get_token():
             raise ConnectionError("Conditional Access policy is blocking sign-in.")
         if "aadsts7000218" in err_l:
             raise ConnectionError("Enable public client flows in your Azure App Registration.")
-        raise ConnectionError(f"Authentication failed: {err[:400]}")
+        raise ConnectionError("Authentication failed: {}".format(err[:400]))
 
     token = body.get("access_token")
     if not token:
@@ -135,8 +129,10 @@ def _from_share_url(token, share_url):
     if not share_url:
         return None
     resp = requests.get(
-        f"https://graph.microsoft.com/v1.0/shares/{_encode_share_url(share_url)}/driveItem/content",
-        headers={"Authorization": f"Bearer {token}"},
+        "https://graph.microsoft.com/v1.0/shares/{}/driveItem/content".format(
+            _encode_share_url(share_url)
+        ),
+        headers={"Authorization": "Bearer {}".format(token)},
         timeout=30,
         allow_redirects=True,
     )
@@ -149,8 +145,10 @@ def _from_item_id(token, user, item_id):
     if not user or not item_id:
         return None
     resp = requests.get(
-        f"https://graph.microsoft.com/v1.0/users/{user}/drive/items/{item_id}/content",
-        headers={"Authorization": f"Bearer {token}"},
+        "https://graph.microsoft.com/v1.0/users/{}/drive/items/{}/content".format(
+            user, item_id
+        ),
+        headers={"Authorization": "Bearer {}".format(token)},
         timeout=30,
         allow_redirects=True,
     )
@@ -163,8 +161,10 @@ def _from_search(token, user, filename):
     if not user:
         return None
     sr = requests.get(
-        f"https://graph.microsoft.com/v1.0/users/{user}/drive/root/search(q='{filename}')",
-        headers={"Authorization": f"Bearer {token}"},
+        "https://graph.microsoft.com/v1.0/users/{}/drive/root/search(q='{}')".format(
+            user, filename
+        ),
+        headers={"Authorization": "Bearer {}".format(token)},
         timeout=20,
     )
     if sr.status_code != 200:
@@ -177,8 +177,10 @@ def _from_search(token, user, filename):
     if not match:
         return None
     dl = requests.get(
-        f"https://graph.microsoft.com/v1.0/users/{user}/drive/items/{match['id']}/content",
-        headers={"Authorization": f"Bearer {token}"},
+        "https://graph.microsoft.com/v1.0/users/{}/drive/items/{}/content".format(
+            user, match["id"]
+        ),
+        headers={"Authorization": "Bearer {}".format(token)},
         timeout=30,
         allow_redirects=True,
     )
@@ -193,22 +195,18 @@ def _download(token, file_key):
     user      = _graph_user_id(meta.get("user", ""))
     share_url = _get_secret(meta.get("share_secret", ""))
 
-    # 1. Share URL (most reliable)
     data = _from_share_url(token, share_url)
     if data is not None:
         return data
 
-    # 2. Item ID
     data = _from_item_id(token, user, meta.get("item_id", ""))
     if data is not None:
         return data
 
-    # 3. Filename search in owner drive
     data = _from_search(token, user, name)
     if data is not None:
         return data
 
-    # 4. Filename search in signed-in account
     me = _get_secret("MS_EMAIL")
     if me and me != user:
         data = _from_search(token, me, name)
@@ -216,29 +214,22 @@ def _download(token, file_key):
             return data
 
     raise FileNotFoundError(
-        f"Could not fetch '{name}' from Microsoft 365. "
-        f"Add '{meta['share_secret']}' to Streamlit Cloud Secrets."
+        "Could not fetch '{}' from Microsoft 365. "
+        "Set '{}' in Streamlit Cloud Secrets.".format(name, meta["share_secret"])
     )
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+# ── Public functions ──────────────────────────────────────────────────────────
 
 @st.cache_data(ttl=0, show_spinner=False)
-def fetch_excel_files(_cache_bust: int = 0) -> dict:
-    """
-    Fetch all 4 Excel files from SharePoint.
-    Returns dict with keys: webinar, seminar_updated, conversion, leads.
-    Each value is io.BytesIO.
-    """
+def fetch_excel_files(_cache_bust=0):
+    """Fetch all 4 Excel files. Returns dict keyed by file name."""
     token = _get_token()
     return {key: _download(token, key) for key in _FILES}
 
 
-def check_secrets_configured() -> tuple:
-    """
-    Returns (ok: bool, missing: list[str]).
-    Checks MS_EMAIL and MS_PASSWORD are set.
-    """
+def check_secrets_configured():
+    """Returns (ok, missing_list). Checks MS_EMAIL and MS_PASSWORD."""
     missing = []
     try:
         for key in ["MS_EMAIL", "MS_PASSWORD"]:
@@ -249,18 +240,16 @@ def check_secrets_configured() -> tuple:
     return len(missing) == 0, missing
 
 
-def check_share_urls_configured() -> dict:
-    """
-    Returns {secret_name: bool} — True if the secret is set and non-empty.
-    """
-    share_secrets = [
+def check_share_urls_configured():
+    """Returns dict of {secret_name: bool} for each SharePoint URL secret."""
+    secrets_to_check = [
         "SHARE_URL_WEBINAR",
         "SHARE_URL_SEMINAR_UPDATE",
         "SHARE_URL_CONVERSION",
         "SHARE_URL_LEADS",
     ]
     result = {}
-    for s in share_secrets:
+    for s in secrets_to_check:
         try:
             result[s] = bool(st.secrets.get(s, "").strip())
         except Exception:
