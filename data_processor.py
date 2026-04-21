@@ -271,7 +271,7 @@ def parse_offline_files(seminar_updated_file, conversion_file, leads_file,
     c_trainer  = _detect(sem,'Trainer / Presenter','Trainer','Presenter','trainer')
     c_semdate  = _detect(sem,'Seminar Date','Date','seminar_date','Event Date')
     c_session  = _detect(sem,'Session','session','Batch','Time')
-    c_attended = _detect(sem,'Is Attended ?','Attended','is_attended','attended')
+    c_attended = _detect(sem,'Is Attended ?','Is Attended?','Attended','attended','is_attended','IsAttended','ATTENDED','Attendance','Present','attend')
     c_amount   = _detect(sem,'Amount Paid','Seat Amount','seat_amount','amount_paid','SeatAmount')
 
     sem['mobile_clean']     = sem[c_mobile].apply(clean_mobile) if c_mobile else None
@@ -403,6 +403,7 @@ def parse_offline_files(seminar_updated_file, conversion_file, leads_file,
             'primary_status':     '',
             'additional_courses': [],
             'additional_paid':    0.0,
+            'additional_due':     0.0,
             'converted':          False,
             'sales_rep':          '',
             'match_reason':       '',
@@ -446,10 +447,26 @@ def parse_offline_files(seminar_updated_file, conversion_file, leads_file,
             entry['primary_mode']       = str(primary['payment_mode_clean']).strip()
             entry['sales_rep']          = str(primary['sales_rep_clean']).strip()
 
-            others = all_orders[all_orders.index != primary.name]
-            entry['additional_courses'] = list(others['service_name_clean'].dropna().astype(str).str.strip().unique())
-            entry['additional_paid']    = float(others['paid_amount'].sum())
+            # Additional = ALL OTHER PAID orders (not the primary)
+            paid_others = paid_orders[paid_orders.index != primary.name]
+            entry['additional_courses'] = [
+                {
+                    'course':  str(o['service_name_clean']).strip(),
+                    'paid':    float(o['paid_amount']),
+                    'due':     float(o['total_due']),
+                    'gst':     float(o['total_gst']),
+                    'mode':    str(o['payment_mode_clean']).strip(),
+                    'status':  normalize_status(o['status_clean']),
+                    'order_date': o['order_date_clean'].strftime('%Y-%m-%d') if pd.notna(o['order_date_clean']) else '',
+                    'sales_rep': str(o['sales_rep_clean']).strip(),
+                    'order_id':  str(o['order_id_clean']).strip(),
+                }
+                for _, o in paid_others.iterrows()
+            ]
+            entry['additional_paid']    = float(paid_others['paid_amount'].sum())
+            entry['additional_due']     = float(paid_others['total_due'].sum())
 
+            # Export ALL orders (paid and unpaid) but mark paid status
             for _, o in all_orders.iterrows():
                 order_rows.append({
                     'name':         entry['name'],  'mobile':       entry['mobile'],
@@ -493,7 +510,7 @@ def parse_offline_files(seminar_updated_file, conversion_file, leads_file,
     total      = len(student_rows)
     conv_count = sum(1 for s in student_rows if s['converted'])
     t_paid     = sum(s['primary_paid'] + s['additional_paid'] for s in student_rows)
-    t_due      = sum(s['primary_due'] for s in student_rows)
+    t_due      = sum(s['primary_due'] + s.get('additional_due', 0) for s in student_rows)
 
     course_stats = {}
     for s in student_rows:
