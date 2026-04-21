@@ -304,6 +304,7 @@ def parse_offline_files(seminar_updated_file, conversion_file, leads_file,
     cc_mode     = _detect(conv,'payment_mode','Payment Mode','mode')
     cc_status   = _detect(conv,'status','Status')
     cc_orderid  = _detect(conv,'orderID','Order ID','order_id','OrderId')
+    cc_total    = _detect(conv,'total_amount','Total Amount','TotalAmount','course_amount','CourseAmount','total_fees','TotalFees','course_fee','CourseFee','total','Total')
 
     conv['mobile_clean']       = conv[cc_mobile].apply(clean_mobile) if cc_mobile else None
     conv['order_date_clean']   = (pd.to_datetime(conv[cc_orderdt], errors='coerce', utc=True)
@@ -311,6 +312,7 @@ def parse_offline_files(seminar_updated_file, conversion_file, leads_file,
     conv['payment_received']   = safe_numeric(conv[cc_payrec]) if cc_payrec else 0
     conv['total_gst']          = safe_numeric(conv[cc_gst])    if cc_gst    else 0
     conv['total_due']          = safe_numeric(conv[cc_due])    if cc_due    else 0
+    conv['total_amount']       = safe_numeric(conv[cc_total]) if cc_total else 0
     conv['paid_amount']        = conv['payment_received']
     conv['service_name_clean'] = conv[cc_service].astype(str).str.strip() if cc_service else ''
     conv['trainer_clean']      = conv[cc_trainer].astype(str).str.strip() if cc_trainer else ''
@@ -397,6 +399,7 @@ def parse_offline_files(seminar_updated_file, conversion_file, leads_file,
             'primary_course':     '',
             'primary_order_date': '',
             'primary_paid':       0.0,
+            'primary_total':      0.0,
             'primary_due':        0.0,
             'primary_gst':        0.0,
             'primary_mode':       '',
@@ -405,6 +408,7 @@ def parse_offline_files(seminar_updated_file, conversion_file, leads_file,
             'additional_paid':    0.0,
             'additional_due':     0.0,
             'converted':          False,
+            'has_partial':        False,
             'sales_rep':          '',
             'match_reason':       '',
         }
@@ -425,9 +429,28 @@ def parse_offline_files(seminar_updated_file, conversion_file, leads_file,
 
         if not all_orders.empty:
             entry['primary_status'] = normalize_status(all_orders.iloc[-1]['status_clean'])
-            # Only mark converted if at least one order has payment > 0
+
+            # CONVERSION LOGIC:
+            # A student is CONVERTED if payment_received >= total_amount (fully paid)
+            # If total_amount column not available, fallback: payment_received > 0 AND total_due == 0
+            def _is_fully_paid(row):
+                paid = float(row['paid_amount'])
+                total = float(row.get('total_amount', 0))
+                due   = float(row['total_due'])
+                if paid <= 0:
+                    return False
+                if total > 0:
+                    # total_amount available: converted only if paid >= total (within ₹1 tolerance)
+                    return paid >= (total - 1)
+                else:
+                    # No total_amount column: converted if due == 0 and paid > 0
+                    return due <= 0 and paid > 0
+
             paid_orders = all_orders[all_orders['paid_amount'] > 0]
-            entry['converted'] = len(paid_orders) > 0
+            converted_orders = all_orders[all_orders.apply(_is_fully_paid, axis=1)]
+            entry['converted'] = len(converted_orders) > 0
+            # For partial payments: still track revenue but mark not-converted
+            entry['has_partial'] = len(paid_orders) > 0 and len(converted_orders) == 0
 
             valid_after = (all_orders[all_orders['order_date_clean'] >= sem_dt]
                            if pd.notna(sem_dt) and all_orders['order_date_clean'].notna().any()
@@ -442,6 +465,7 @@ def parse_offline_files(seminar_updated_file, conversion_file, leads_file,
             entry['primary_course']     = primary['service_name_clean']
             entry['primary_order_date'] = primary['order_date_clean'].strftime('%Y-%m-%d') if pd.notna(primary['order_date_clean']) else ''
             entry['primary_paid']       = float(primary['paid_amount'])
+            entry['primary_total']      = float(primary.get('total_amount', 0))
             entry['primary_due']        = float(primary['total_due'])
             entry['primary_gst']        = float(primary['total_gst'])
             entry['primary_mode']       = str(primary['payment_mode_clean']).strip()
@@ -475,6 +499,7 @@ def parse_offline_files(seminar_updated_file, conversion_file, leads_file,
                     'order_date':   o['order_date_clean'].strftime('%Y-%m-%d') if pd.notna(o['order_date_clean']) else '',
                     'order_month':  o['order_date_clean'].strftime('%Y-%m')    if pd.notna(o['order_date_clean']) else '',
                     'paid_amount':  float(o['paid_amount']),
+                    'total_amount': float(o.get('total_amount', 0)),
                     'total_due':    float(o['total_due']),
                     'total_gst':    float(o['total_gst']),
                     'payment_mode': str(o['payment_mode_clean']).strip(),
@@ -512,30 +537,53 @@ def parse_offline_files(seminar_updated_file, conversion_file, leads_file,
     t_paid     = sum(s['primary_paid'] + s['additional_paid'] for s in student_rows)
     t_due      = sum(s['primary_due'] + s.get('additional_due', 0) for s in student_rows)
 
+    # Course stats — computed from ALL paid order_rows for accuracy
+    # Includes primary + all advanced (additional) courses
     course_stats = {}
-    for s in student_rows:
-        if not s['converted'] or not s['primary_course']: continue
-        c = s['primary_course']
+    for o in order_rows:
+        if o.get('paid_amount', 0) <= 0:
+            continue
+        c = (o.get('course') or '').strip()
+        if not c or c == 'nan':
+            continue
         if c not in course_stats:
-            course_stats[c] = {'count':0,'paid':0.0,'due':0.0,'fully_paid':0}
-        course_stats[c]['count']      += 1
-        course_stats[c]['paid']       += s['primary_paid']
-        course_stats[c]['due']        += s['primary_due']
-        course_stats[c]['fully_paid'] += 1 if s['primary_due'] <= 0 else 0
-    course_stats = dict(sorted(course_stats.items(), key=lambda x: -x[1]['count']))
+            course_stats[c] = {'count':0,'paid':0.0,'due':0.0,'fully_paid':0,
+                               'total_amount':0.0,'is_primary':o.get('is_primary',False)}
+        course_stats[c]['count']        += 1
+        course_stats[c]['paid']         += float(o.get('paid_amount', 0))
+        course_stats[c]['due']          += float(o.get('total_due', 0))
+        course_stats[c]['total_amount'] += float(o.get('total_amount', 0) or 0)
+        if float(o.get('total_due', 0)) <= 0:
+            course_stats[c]['fully_paid'] += 1
+        if o.get('is_primary', False):
+            course_stats[c]['is_primary'] = True
+    course_stats = dict(sorted(course_stats.items(), key=lambda x: -x[1]['paid']))
 
+    # Sales rep stats — computed from ALL paid order_rows (not just primary per student)
+    # This correctly attributes revenue to the rep who closed each specific order
     sr_stats = {}
-    for s in student_rows:
-        if not s['converted'] or not s['sales_rep'] or s['sales_rep'] in ('','nan'): continue
-        r = s['sales_rep']
-        if r not in sr_stats:
-            sr_stats[r] = {'deals':0,'revenue':0.0,'due':0.0,'active':0,'avg_deal':0.0}
-        sr_stats[r]['deals']  += 1
-        sr_stats[r]['revenue']+= s['primary_paid']
-        sr_stats[r]['due']    += s['primary_due']
-        sr_stats[r]['active'] += 1 if s['primary_status'] == 'Active' else 0
+    for o in order_rows:
+        rep = (o.get('sales_rep') or '').strip()
+        if not rep or rep == 'nan' or o.get('paid_amount', 0) <= 0:
+            continue
+        if rep not in sr_stats:
+            sr_stats[rep] = {'deals':0,'revenue':0.0,'due':0.0,'active':0,
+                             'avg_deal':0.0,'courses':set()}
+        sr_stats[rep]['deals']   += 1
+        sr_stats[rep]['revenue'] += float(o.get('paid_amount', 0))
+        sr_stats[rep]['due']     += float(o.get('total_due', 0))
+        if normalize_status(o.get('status','')) == 'Active':
+            sr_stats[rep]['active'] += 1
+        course = o.get('course','')
+        if course and course != 'nan':
+            sr_stats[rep]['courses'].add(course)
     for r in sr_stats:
-        sr_stats[r]['avg_deal'] = round(sr_stats[r]['revenue'] / sr_stats[r]['deals'], 2) if sr_stats[r]['deals'] else 0
+        d = sr_stats[r]
+        d['avg_deal'] = round(d['revenue'] / d['deals'], 2) if d['deals'] else 0
+        d['top_course'] = max(d['courses'], key=lambda c: sum(
+            o.get('paid_amount',0) for o in order_rows
+            if (o.get('sales_rep','').strip()==r and o.get('course','')==c)), default='') if d['courses'] else ''
+        d['courses'] = list(d['courses'])
     sr_stats = dict(sorted(sr_stats.items(), key=lambda x: -x[1]['revenue'])[:25])
 
     loc_stats = {}
