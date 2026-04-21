@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Invesmate Offline Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#08101d;--s1:#0f1827;--s2:#131929;--s3:#1a2236;--border:rgba(99,102,241,.12);
+  --a1:#6366f1;--a2:#f59e0b;--a3:#10b981;--a4:#ef4444;--a5:#8b5cf6;--a6:#06b6d4;--a7:#f97316;
+  --t1:#e2e8f0;--t2:#94a3b8;--t3:#475569;--glow:rgba(99,102,241,.15)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;font-size:14px}
+.hdr{background:linear-gradient(135deg,#0b1220,#0d1527);border-bottom:1px solid var(--border);
+  padding:13px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:100}
+.hdr-left{display:flex;align-items:center;gap:11px}
+.logo{width:36px;height:36px;background:linear-gradient(135deg,var(--a1),var(--a5));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.hdr-title h1{font-family:'Syne',sans-serif;font-size:15px;font-weight:800}
+.hdr-title p{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
+.hdr-right{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.hdr-stat{font-size:11px;color:var(--t3);background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:3px 9px}
+.hdr-stat.hi{border-color:rgba(99,102,241,.3);color:var(--a1)}
+.badge-live{display:flex;align-items:center;gap:5px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--a3);font-weight:600}
+.dot{width:6px;height:6px;background:var(--a3);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+/* FILTERS */
+.fbar{background:var(--s1);border-bottom:1px solid var(--border);padding:9px 22px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.fl{font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.fg{display:flex;align-items:center;gap:5px}
+select,input[type=text]{background:var(--s2);border:1px solid var(--border);border-radius:7px;color:var(--t1);padding:5px 8px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;transition:border-color .2s;cursor:pointer}
+select:focus,input:focus{border-color:var(--a1);box-shadow:0 0 0 3px var(--glow)}
+select{min-width:105px}
+.btn{padding:5px 12px;border-radius:7px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;transition:all .15s;display:inline-flex;align-items:center;gap:4px}
+.btn-g{background:var(--s2);color:var(--t2);border:1px solid var(--border)}
+.btn-g:hover{color:var(--t1);border-color:var(--a1)}
+.btn-exp{background:rgba(16,185,129,.1);color:var(--a3);border:1px solid rgba(16,185,129,.25)}
+.btn-exp:hover{background:rgba(16,185,129,.18)}
+.fcount{font-size:11px;color:var(--t3);margin-left:auto}
+/* EXPORT */
+.exp-bar{background:rgba(99,102,241,.04);border-bottom:1px solid var(--border);padding:7px 22px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.exp-label{font-size:11px;color:var(--a1);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+/* MAIN */
+.main{padding:16px 22px}
+.ntabs{display:flex;gap:2px;margin-bottom:15px;background:var(--s1);border-radius:10px;padding:3px;width:fit-content;border:1px solid var(--border);overflow-x:auto}
+.ntab{padding:6px 14px;border-radius:7px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:var(--t3);background:transparent;transition:all .15s;white-space:nowrap}
+.ntab.active{background:var(--a1);color:#fff}
+.ntab:hover:not(.active){color:var(--t1);background:var(--s2)}
+.tab-content{display:none}.tab-content.active{display:block}
+/* SECTION HEADER */
+.sh{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin:18px 0 12px;display:flex;align-items:center;gap:8px}
+.sh:first-child{margin-top:0}
+.sh::after{content:'';flex:1;height:1px;background:var(--border)}
+.sh-sub{font-size:10px;color:var(--t3);font-weight:400;font-family:'DM Sans',sans-serif;text-transform:none;letter-spacing:0}
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:14px;position:relative;overflow:hidden;transition:transform .15s,box-shadow .15s}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--kc,var(--a1))}
+.ki{font-size:18px;margin-bottom:7px}
+.kl{font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.kv{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--t1)}
+.ks{font-size:10px;color:var(--t3);margin-top:3px}
+/* CHARTS */
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.cgrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.cfull{grid-column:1/-1}
+.cc{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:15px;margin-bottom:14px}
+.cc-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:13px;gap:7px;flex-wrap:wrap}
+.cc-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:2px}
+.cc-sub{font-size:11px;color:var(--t3)}
+.cc-badge{background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.2);color:var(--a1);padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.cc-actions{display:flex;gap:5px;align-items:center;flex-shrink:0}
+canvas{max-height:250px}
+/* TABLE */
+.tw{overflow-x:auto}
+.tw-tb{display:flex;align-items:center;gap:7px;margin-bottom:8px;flex-wrap:wrap}
+.tw-search{background:var(--s2);border:1px solid var(--border);border-radius:7px;color:var(--t1);padding:5px 10px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;width:210px;transition:border-color .2s}
+.tw-search:focus{border-color:var(--a1)}
+table{width:100%;border-collapse:collapse}
+th{font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;color:var(--t2);white-space:nowrap}
+tr:hover td{background:rgba(255,255,255,.02);color:var(--t1)}
+.tfoot td{background:var(--s2);font-weight:700;color:var(--t1);border-top:1px solid var(--border)}
+/* BADGES */
+.bdg{display:inline-flex;align-items:center;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700}
+.bg{background:rgba(16,185,129,.12);color:var(--a3)}
+.by{background:rgba(245,158,11,.12);color:var(--a2)}
+.br{background:rgba(239,68,68,.12);color:var(--a4)}
+.bb{background:rgba(99,102,241,.12);color:var(--a1)}
+.bp{background:rgba(139,92,246,.12);color:var(--a5)}
+/* RANK */
+.rnk{width:20px;height:20px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;margin-right:4px}
+.r1{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000}
+.r2{background:rgba(200,200,220,.18);color:#aaa}
+.r3{background:rgba(180,100,60,.25);color:#c87}
+/* PAGINATION */
+.pagination{display:flex;align-items:center;gap:4px;margin-top:9px;justify-content:center;flex-wrap:wrap}
+.pg-btn{padding:4px 9px;border-radius:6px;border:1px solid var(--border);background:var(--s2);color:var(--t2);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;transition:all .12s}
+.pg-btn:hover{color:var(--t1);border-color:var(--a1)}
+.pg-btn.active{background:var(--a1);color:#fff;border-color:var(--a1)}
+.pg-info{font-size:11px;color:var(--t3)}
+/* FUNNEL */
+.funnel{display:flex;flex-direction:column;gap:8px;padding:4px 0}
+.funnel-step{display:flex;align-items:center;gap:10px}
+.funnel-label{min-width:130px;font-size:12px;color:var(--t2);font-weight:600}
+.funnel-bar-wrap{flex:1;background:rgba(255,255,255,.04);border-radius:6px;overflow:hidden}
+.funnel-bar{height:32px;border-radius:6px;display:flex;align-items:center;padding:0 12px;font-weight:700;font-size:12px;color:#fff;transition:width .8s ease}
+.funnel-val{min-width:80px;text-align:right;font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--t1)}
+.funnel-pct{font-size:10px;color:var(--t3);margin-top:1px}
+/* TOAST */
+.toast{position:fixed;bottom:18px;right:18px;background:var(--s2);border:1px solid var(--a3);border-radius:9px;padding:8px 14px;font-size:12px;color:var(--a3);font-weight:600;z-index:9999;display:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+@media(max-width:1000px){.cgrid,.cgrid3{grid-template-columns:1fr}.kpi-grid{grid-template-columns:repeat(2,1fr)}.main{padding:11px}}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div class="hdr-left">
+    <div class="logo">🏢</div>
+    <div class="hdr-title"><h1>Invesmate Offline Dashboard</h1><p>Seminar Analytics · Student Intelligence · Sales Performance</p></div>
+  </div>
+  <div class="hdr-right">
+    <div class="badge-live"><div class="dot"></div>Live</div>
+    <div class="hdr-stat hi" id="hdr-seminars">— Seminars</div>
+    <div class="hdr-stat" id="hdr-att">— Attended</div>
+    <div class="hdr-stat hi" id="hdr-conv">— Converted</div>
+    <div class="hdr-stat" id="hdr-rev">— Revenue</div>
+    <div class="hdr-stat" id="hdr-locs">— Locations</div>
+  </div>
+</div>
+
+<div class="fbar">
+  <div class="fg"><span class="fl">📅 Date</span><select id="fDate" onchange="applyFilters()"><option value="">All Dates</option></select></div>
+  <div class="fg"><span class="fl">📍 Location</span><select id="fPlace" onchange="applyFilters()"><option value="">All Locations</option></select></div>
+  <div class="fg"><span class="fl">🎓 Trainer</span><select id="fTrainer" onchange="applyFilters()"><option value="">All Trainers</option></select></div>
+  <div class="fg"><span class="fl">🌓 Session</span><select id="fSession" onchange="applyFilters()"><option value="">All Sessions</option></select></div>
+  <div class="fg"><span class="fl">✅ Status</span>
+    <select id="fConv" onchange="applyFilters()"><option value="">All</option><option value="yes">Converted</option><option value="no">Not Converted</option></select>
+  </div>
+  <div class="fg"><span class="fl">💸 Due</span>
+    <select id="fDue" onchange="applyFilters()"><option value="">All</option><option value="zero">Due = 0</option><option value="has">Has Due</option></select>
+  </div>
+  <div class="fg"><span class="fl">🌐 Lead Type</span>
+    <select id="fLead" onchange="applyFilters()"><option value="">All</option><option value="Webinar">Webinar</option><option value="Non Webinar">Non Webinar</option></select>
+  </div>
+  <div class="fg"><span class="fl">📚 Course</span><select id="fCourse" onchange="applyFilters()"><option value="">All Courses</option></select></div>
+  <div class="fg"><span class="fl">📡 Source</span><select id="fLeadSrc" onchange="applyFilters()"><option value="">All Sources</option></select></div>
+  <div class="fg"><span class="fl">🏷 Stage</span><select id="fStage" onchange="applyFilters()"><option value="">All Stages</option></select></div>
+  <button class="btn btn-g" onclick="resetFilters()">↺ Reset</button>
+  <div class="fcount" id="fcount"></div>
+</div>
+
+<div class="exp-bar">
+  <span class="exp-label">⬇ Export</span>
+  <button class="btn btn-exp" onclick="exportStudentsCSV()">👥 All Students</button>
+  <button class="btn btn-exp" onclick="exportConvertedCSV()">✅ Converted</button>
+  <button class="btn btn-exp" onclick="exportOrdersCSV()">📦 Orders</button>
+  <button class="btn btn-exp" onclick="exportSalesRepCSV()">🏆 Sales Rep</button>
+  <button class="btn btn-exp" onclick="exportLocationCSV()">📍 Locations</button>
+</div>
+
+<div class="main">
+<div class="ntabs">
+  <button class="ntab active" onclick="switchTab('overview',this)">📊 Overview</button>
+  <button class="ntab" onclick="switchTab('funnel',this)">🔻 Funnel</button>
+  <button class="ntab" onclick="switchTab('courses',this)">📚 Courses</button>
+  <button class="ntab" onclick="switchTab('leads',this)">🎯 Lead Intel</button>
+  <button class="ntab" onclick="switchTab('sales',this)">🏆 Sales</button>
+  <button class="ntab" onclick="switchTab('students',this)">👥 Students</button>
+  <button class="ntab" onclick="switchTab('trends',this)">📈 Trends</button>
+</div>
+
+<!-- ══ OVERVIEW ══ -->
+<div class="tab-content active" id="tab-overview">
+  <div class="sh">🏢 Seminar Operations <span class="sh-sub" id="kpi-sub"></span></div>
+  <div class="kpi-grid" id="kpiGrid1"></div>
+
+  <div class="sh">🎯 Lead Intelligence KPIs</div>
+  <div class="kpi-grid" id="kpiGrid2"></div>
+
+  <div class="cgrid">
+    <div class="cc">
+      <div class="cc-hdr">
+        <div><div class="cc-title">Attendees &amp; Conversions by Date</div><div class="cc-sub">Per seminar event — attended vs paid/converted</div></div>
+        <div class="cc-actions"><div class="cc-badge" id="b-conv-rate">—</div><button class="btn btn-g" onclick="exportChart('chartByDate','by_date')" style="font-size:10px;padding:3px 7px">⬇</button></div>
+      </div>
+      <canvas id="chartByDate"></canvas>
+    </div>
+    <div class="cc">
+      <div class="cc-hdr">
+        <div><div class="cc-title">Top Locations — Attended vs Converted</div><div class="cc-sub">Top 12 locations by attendance</div></div>
+        <button class="btn btn-g" onclick="exportChart('chartByLoc','by_location')" style="font-size:10px;padding:3px 7px">⬇</button>
+      </div>
+      <canvas id="chartByLoc"></canvas>
+    </div>
+  </div>
+
+  <div class="cgrid3">
+    <div class="cc">
+      <div class="cc-hdr"><div><div class="cc-title">Session Split</div><div class="cc-sub">Morning vs Evening</div></div><button class="btn btn-g" onclick="exportChart('chartSession','session')" style="font-size:10px;padding:3px 7px">⬇</button></div>
+      <canvas id="chartSession"></canvas>
+    </div>
+    <div class="cc">
+      <div class="cc-hdr"><div><div class="cc-title">Webinar vs Non-Webinar</div><div class="cc-sub">Lead type breakdown</div></div><button class="btn btn-g" onclick="exportChart('chartLeadType','lead_type')" style="font-size:10px;padding:3px 7px">⬇</button></div>
+      <canvas id="chartLeadType"></canvas>
+    </div>
+    <div class="cc">
+      <div class="cc-hdr"><div><div class="cc-title">Revenue by Location (Top 10)</div><div class="cc-sub">₹ paid per city</div></div><button class="btn btn-g" onclick="exportChart('chartRevLoc','rev_loc')" style="font-size:10px;padding:3px 7px">⬇</button></div>
+      <canvas id="chartRevLoc"></canvas>
+    </div>
+  </div>
+
+  <div class="sh">👨‍🏫 Trainer Performance <span class="sh-sub" id="trainer-sub"></span></div>
+  <div class="cc cfull"><div class="tw" id="trainerTable"></div></div>
+</div>
+
+<!-- ══ FUNNEL ══ -->
+<div class="tab-content" id="tab-funnel">
+  <div class="sh">🔻 Conversion Funnel — Step by Step</div>
+  <div class="cc cfull">
+    <div class="cc-hdr"><div><div class="cc-title">End-to-End Seminar Funnel</div><div class="cc-sub">From seminar list → attended → seat booked → converted (paid) → fully paid</div></div></div>
+    <div class="funnel" id="funnelChart"></div>
+  </div>
+  <div class="cgrid">
+    <div class="cc">
+      <div class="cc-hdr"><div><div class="cc-title">Funnel by Lead Type</div><div class="cc-sub">Webinar vs Non-Webinar conversion rates</div></div></div>
+      <canvas id="chartFunnelLead"></canvas>
+    </div>
+    <div class="cc">
+      <div class="cc-hdr"><div><div class="cc-title">Conversion by Location (Top 15)</div><div class="cc-sub">Seat Booked → Converted %</div></div></div>
+      <canvas id="chartFunnelLoc"></canvas>
+    </div>
+  </div>
+  <div class="cc cfull">
+    <div class="cc-hdr"><div><div class="cc-title">Seminars Conducted — Detail</div><div class="cc-sub">Unique events: date × location × trainer</div></div>
+    <button class="btn btn-exp" onclick="exportSeminarsCSV()" style="margin-left:auto">📄 CSV</button></div>
+    <div class="tw" id="seminarsTable"></div>
+  </div>
+</div>
+
+<!-- ══ COURSES ══ -->
+<div class="tab-content" id="tab-courses">
+  <div class="sh">📚 Course Analysis</div>
+  <div class="cgrid">
+    <div class="cc"><div class="cc-hdr"><div><div class="cc-title">Course-wise Student Count</div></div><button class="btn btn-g" onclick="exportChart('chartCourseCnt','course_count')" style="font-size:10px;padding:3px 7px">⬇</button></div><canvas id="chartCourseCnt"></canvas></div>
+    <div class="cc"><div class="cc-hdr"><div><div class="cc-title">Course Share (Top 10)</div></div><button class="btn btn-g" onclick="exportChart('chartCourseShare','course_share')" style="font-size:10px;padding:3px 7px">⬇</button></div><canvas id="chartCourseShare"></canvas></div>
+  </div>
+  <div class="cgrid">
+    <div class="cc"><div class="cc-hdr"><div><div class="cc-title">Course Revenue (₹ Paid)</div></div><button class="btn btn-g" onclick="exportChart('chartCourseRev','course_rev')" style="font-size:10px;padding:3px 7px">⬇</button></div><canvas id="chartCourseRev"></canvas></div>
+    <div class="cc"><div class="cc-hdr"><div><div class="cc-title">Paid vs Due by Course</div></div><button class="btn btn-g" onclick="exportChart('chartCoursePD','course_pd')" style="font-size:10px;padding:3px 7px">⬇</button></div><canvas id="chartCoursePD"></canvas></div>
+  </div>
+  <div class="sh" style="margin-top:4px">📋 Course Summary</div>
+  <div class="cc cfull"><div class="tw" id="courseTable"></div></div>
+</div>
+
+<!-- ══ LEAD INTEL ══ -->
+<div class="tab-content" id="tab-leads">
+  <div class="sh">🎯 Lead Intelligence</div>
+  <div class="kpi-grid" id="leadsKpiGrid"></div>
+  <div class="cgrid">
+    <div class="cc"><div class="cc-hdr"><div><div class="cc-title">Lead Source Distribution</div></div><button class="btn btn-g" onclick="exportChart('chartLeadSrc','lead_source')" style="font-size:10px;padding:3px 7px">⬇</button></div><canvas id="chartLeadSrc"></canvas></div>
+    <div class="cc"><div class="cc-hdr"><div><div class="cc-title">Lead Status Breakdown</div></div><button class="btn btn-g" onclick="exportChart('chartLeadStatus','lead_status')" style="font-size:10px;padding:3px 7px">⬇</button></div><canvas id="chartLeadStatus"></canvas></div>
+  </div>
+  <div class="cgrid">
+    <div class="cc"><div class="cc-hdr"><div><div class="cc-title">Stage Distribution</div></div><button class="btn btn-g" onclick="exportChart('chartStage','stage')" style="font-size:10px;padding:3px 7px">⬇</button></div><canvas id="chartStage"></canvas></div>
+    <div class="cc"><div class="cc-hdr"><div><div class="cc-title">Lead Owner Performance</div></div><button class="btn btn-g" onclick="exportChart('chartOwner','owner')" style="font-size:10px;padding:3px 7px">⬇</button></div><canvas id="chartOwner"></canvas></div>
+  </div>
+  <div class="sh" style="margin-top:4px">📢 Campaign Performance</div>
+  <div class="cc cfull"><div class="tw" id="campaignTable"></div></div>
+  <div class="sh" style="margin-top:14px">📋 Lead Table</div>
+  <div class="cc cfull">
+    <div class="tw-tb">
+      <input class="tw-search" id="leadSearch" placeholder="🔍 Search name, mobile, source…" oninput="leadPage=1;renderLeadTable()">
+      <span class="pg-info" id="leadPagInfo"></span>
+      <button class="btn btn-exp" style="margin-left:auto" onclick="exportLeadTableCSV()">📄 CSV</button>
+    </div>
+    <div class="tw" id="leadTable"></div>
+    <div class="pagination" id="leadPag"></div>
+  </div>
+</div>
+
+<!-- ══ SALES ══ -->
+<div class="tab-content" id="tab-sales">
+  <div class="sh">🏆 Sales Performance</div>
+  <div class="kpi-grid" id="salesKpiGrid"></div>
+  <div class="cgrid">
+    <div class="cc"><div class="cc-hdr"><div><div class="cc-title">Revenue by Sales Rep (Top 15)</div></div><button class="btn btn-g" onclick="exportChart('chartSalesRev','sales_rev')" style="font-size:10px;padding:3px 7px">⬇</button></div><canvas id="chartSalesRev"></canvas></div>
+    <div class="cc"><div class="cc-hdr"><div><div class="cc-title">Deals by Sales Rep (Top 15)</div></div><button class="btn btn-g" onclick="exportChart('chartSalesDeals','sales_deals')" style="font-size:10px;padding:3px 7px">⬇</button></div><canvas id="chartSalesDeals"></canvas></div>
+  </div>
+  <div class="sh" style="margin-top:4px">🏆 Leaderboard</div>
+  <div class="cc cfull">
+    <div class="tw-tb">
+      <input class="tw-search" id="salesSearch" placeholder="🔍 Search rep name…" oninput="salesPage=1;renderSalesTable()">
+      <span class="pg-info" id="salesPagInfo"></span>
+      <button class="btn btn-exp" style="margin-left:auto" onclick="exportSalesRepCSV()">📄 CSV</button>
+    </div>
+    <div class="tw" id="salesTable"></div>
+    <div class="pagination" id="salesPag"></div>
+  </div>
+</div>
+
+<!-- ══ STUDENTS ══ -->
+<div class="tab-content" id="tab-students">
+  <div class="sh">👥 Student Records <span class="sh-sub" id="stu-sub"></span></div>
+  <div style="display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap">
+    <button class="btn btn-exp" onclick="exportStudentsCSV()">👥 All Students CSV</button>
+    <button class="btn btn-exp" onclick="exportConvertedCSV()">✅ Converted CSV</button>
+    <button class="btn btn-exp" onclick="exportOrdersCSV()">📦 Orders CSV</button>
+  </div>
+  <div class="cc cfull">
+    <div class="cc-hdr"><div><div class="cc-title">📋 Attendee Master</div><div class="cc-sub">All filtered students</div></div></div>
+    <div class="tw-tb">
+      <input class="tw-search" id="attSearch" placeholder="🔍 Search name, mobile, location…" oninput="attPage=1;renderAttTable()">
+      <span class="pg-info" id="attPagInfo"></span>
+    </div>
+    <div class="tw" id="attTable"></div>
+    <div class="pagination" id="attPag"></div>
+  </div>
+  <div class="cc cfull" style="margin-top:8px">
+    <div class="cc-hdr"><div><div class="cc-title">✅ Converted Students</div><div class="cc-sub">Students who paid after seminar</div></div></div>
+    <div class="tw-tb">
+      <input class="tw-search" id="convSearch" placeholder="🔍 Search converted students…" oninput="convPage=1;renderConvTable()">
+      <span class="pg-info" id="convPagInfo"></span>
+    </div>
+    <div class="tw" id="convTable"></div>
+    <div class="pagination" id="convPag"></div>
+  </div>
+  <div class="cc cfull" style="margin-top:8px">
+    <div class="cc-hdr"><div><div class="cc-title">📦 Orders Summary by Location</div></div></div>
+    <div class="tw" id="ordersTable"></div>
+  </div>
+</div>
+
+<!-- ══ TRENDS ══ -->
+<div class="tab-content" id="tab-trends">
+  <div class="sh">📈 Monthly Trends</div>
+  <div class="kpi-grid" id="trendsKpiGrid"></div>
+  <div class="cc cfull">
+    <div class="cc-hdr"><div><div class="cc-title">Attended, Seat Booked &amp; Converted — Month over Month</div></div><button class="btn btn-g" onclick="exportChart('chartTrendMain','trend_main')" style="font-size:10px;padding:3px 7px">⬇</button></div>
+    <canvas id="chartTrendMain"></canvas>
+  </div>
+  <div class="cgrid">
+    <div class="cc"><div class="cc-hdr"><div><div class="cc-title">Revenue Trend (₹)</div></div><button class="btn btn-g" onclick="exportChart('chartTrendRev','trend_rev')" style="font-size:10px;padding:3px 7px">⬇</button></div><canvas id="chartTrendRev"></canvas></div>
+    <div class="cc"><div class="cc-hdr"><div><div class="cc-title">Conversion Rate Trend</div><div class="cc-sub">Seat Booked → Converted %</div></div><button class="btn btn-g" onclick="exportChart('chartTrendConv','trend_conv')" style="font-size:10px;padding:3px 7px">⬇</button></div><canvas id="chartTrendConv"></canvas></div>
+  </div>
+</div>
+</div><!-- /main -->
+
+<div class="toast" id="toast"></div>
+<script>
+// @@DATA@@
+
+const COLORS=['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#f97316','#ec4899','#14b8a6','#a855f7','#3b82f6','#84cc16'];
+let CHARTS={}, FILTERED=[], FILTERED_ORDERS=[];
+let leadPage=1, attPage=1, convPage=1, salesPage=1;
+const PG=30;
+
+const fmtINR=n=>{try{n=parseFloat(n);if(isNaN(n))return'₹0';const a=Math.abs(n),s=n<0?'-':'';if(a>=1e7)return s+'₹'+(a/1e7).toFixed(2)+'Cr';if(a>=1e5)return s+'₹'+(a/1e5).toFixed(2)+'L';if(a>=1e3)return s+'₹'+(a/1e3).toFixed(1)+'K';return s+'₹'+Math.round(a).toLocaleString();}catch{return'₹0';}};
+const fmtN=n=>{try{n=parseFloat(n);if(isNaN(n))return'0';return Math.round(n).toLocaleString('en-IN');}catch{return'0';}};
+const pct=(a,b)=>b>0?(a/b*100).toFixed(1)+'%':'0%';
+const showToast=msg=>{const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2500);};
+const escCSV=v=>{const s=String(v??'');return(s.includes(',')||s.includes('"')||s.includes('\n'))?'"'+s.replace(/"/g,'""')+'"':s;};
+function downloadCSV(rows,name){const csv=rows.map(r=>r.map(escCSV).join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv'}));a.download=name;a.click();showToast('✅ '+name);}
+function dc(id){if(CHARTS[id]){CHARTS[id].destroy();delete CHARTS[id];}}
+function mc(id,cfg){dc(id);const ctx=document.getElementById(id);if(!ctx)return;CHARTS[id]=new Chart(ctx,{...cfg,options:{...cfg.options,responsive:true,maintainAspectRatio:true,plugins:{...(cfg.options?.plugins||{}),legend:{labels:{color:'#94a3b8',font:{size:11}},...(cfg.options?.plugins?.legend||{})}},scales:cfg.options?.scales?Object.fromEntries(Object.entries(cfg.options.scales).map(([k,v])=>[k,{...v,grid:{color:'rgba(255,255,255,0.05)',...(v.grid||{})},ticks:{color:'#94a3b8',font:{size:10},...(v.ticks||{})}}])):undefined}});return CHARTS[id];}
+function exportChart(id,name){const c=document.getElementById(id);if(!c){showToast('Chart not found');return;}const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download='invesmate_'+name+'_'+new Date().toISOString().slice(0,10)+'.png';a.click();showToast('✅ Chart saved');}
+const fmtYM=ym=>{if(!ym||ym==='Unknown')return ym||'';const[y,m]=ym.split('-');return['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m]+"'"+(y||'').slice(2);};
+
+// ── FILTERS ───────────────────────────────────────────────────────────────────
+function initFilters(){
+  if(!STUDENTS||!STUDENTS.length)return;
+  const add=(id,vals)=>{const sel=document.getElementById(id);if(!sel)return;[...new Set(vals)].filter(v=>v&&v!=='nan').sort().forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;sel.appendChild(o);});};
+  add('fDate',   STUDENTS.map(s=>s.seminar_date));
+  add('fPlace',  STUDENTS.map(s=>s.place));
+  add('fTrainer',STUDENTS.map(s=>s.trainer));
+  add('fSession',STUDENTS.map(s=>s.session));
+  add('fCourse', STUDENTS.filter(s=>s.converted).map(s=>s.primary_course));
+  add('fLeadSrc',STUDENTS.map(s=>s.lead_source||'').filter(Boolean));
+  add('fStage',  STUDENTS.map(s=>s.stage_name||'').filter(Boolean));
+}
+
+function getFiltered(){
+  const v=id=>document.getElementById(id)?.value||'';
+  return (STUDENTS||[]).filter(s=>{
+    if(v('fDate')    && s.seminar_date!==v('fDate'))     return false;
+    if(v('fPlace')   && s.place!==v('fPlace'))            return false;
+    if(v('fTrainer') && s.trainer!==v('fTrainer'))        return false;
+    if(v('fSession') && s.session!==v('fSession'))        return false;
+    if(v('fConv')==='yes' && !(s.converted)) return false;
+    if(v('fConv')==='no'  && (s.converted))  return false;
+    if(v('fDue')==='zero' && !(s.converted&&s.primary_due<=0)) return false;
+    if(v('fDue')==='has'  && !(s.converted&&s.primary_due>0))  return false;
+    if(v('fLead')    && s.webinar_type!==v('fLead'))      return false;
+    if(v('fCourse')  && s.primary_course!==v('fCourse'))  return false;
+    if(v('fLeadSrc') && s.lead_source!==v('fLeadSrc'))    return false;
+    if(v('fStage')   && s.stage_name!==v('fStage'))       return false;
+    return true;
+  });
+}
+
+function resetFilters(){['fDate','fPlace','fTrainer','fSession','fConv','fDue','fLead','fCourse','fLeadSrc','fStage'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});applyFilters();}
+
+function applyFilters(){
+  FILTERED=getFiltered();
+  const mobs=new Set(FILTERED.map(s=>s.mobile));
+  FILTERED_ORDERS=(ORDERS||[]).filter(o=>mobs.has(o.mobile));
+  document.getElementById('fcount').textContent=FILTERED.length+' / '+(STUDENTS||[]).length+' students';
+  leadPage=attPage=convPage=salesPage=1;
+  renderAll();
+}
+
+// ── MAIN RENDER ───────────────────────────────────────────────────────────────
+function renderAll(){
+  renderKPIs(); renderOverviewCharts(); renderFunnelTab();
+  renderCourseTab(); renderLeadsTab(); renderSalesTab();
+  renderStudentsTabs(); renderTrendsTab();
+}
+
+// ── KPIs ──────────────────────────────────────────────────────────────────────
+function renderKPIs(){
+  const d=FILTERED;
+  const total       = d.length;
+  const nAttended   = d.filter(s=>s.attended).length;
+  const nSeatBooked = d.filter(s=>s.seat_booked).length;
+  // CORRECT: converted = payment_received >= total_amount (fully paid)
+  // has_partial = paid > 0 but not fully paid (due > 0)
+  const convArr     = d.filter(s=>s.converted);
+  const nc          = convArr.length;
+  const nPartial    = d.filter(s=>s.has_partial && !s.converted).length;
+  const nFullyPaid  = convArr.filter(s=>s.primary_due<=0).length;
+  const nHasDue     = convArr.filter(s=>s.primary_due>0).length;
+  const tPaid       = d.reduce((s,r)=>s+(r.primary_paid||0)+(r.additional_paid||0),0);
+  const tDue        = d.reduce((s,r)=>s+(r.primary_due||0),0);
+  const tSBAmt      = d.reduce((s,r)=>s+(r.seat_book_amount||0),0);
+  const addRev      = d.reduce((s,r)=>s+(r.additional_paid||0),0);
+  const addDue      = d.reduce((s,r)=>s+(r.additional_due||0),0);
+  const tTotalDue   = d.reduce((s,r)=>s+(r.primary_due||0)+(r.additional_due||0),0);
+  const wbn         = d.filter(s=>s.webinar_type==='Webinar').length;
+  const nwbn        = d.filter(s=>s.webinar_type==='Non Webinar').length;
+  const attL        = d.filter(s=>s.attempted==='Attempted').length;
+  const unatt       = d.filter(s=>s.attempted==='Unattempted').length;
+  const locs        = new Set(d.map(s=>s.place)).size;
+  const seminars    = new Set(d.map(s=>s.seminar_date+'||'+s.place)).size;
+  const leadMatched = d.filter(s=>s.lead_source&&s.lead_source!=='nan'&&s.lead_source!=='').length;
+
+  const stageMap={};
+  d.forEach(s=>{if(s.stage_name&&s.stage_name!=='nan'&&s.stage_name){stageMap[s.stage_name]=(stageMap[s.stage_name]||0)+1;}});
+  const topStage=Object.entries(stageMap).sort((a,b)=>b[1]-a[1])[0];
+
+  document.getElementById('hdr-seminars').textContent = seminars+' Seminars';
+  document.getElementById('hdr-att').textContent      = fmtN(nAttended)+' Attended';
+  document.getElementById('hdr-conv').textContent     = fmtN(nc)+' Converted';
+  document.getElementById('hdr-rev').textContent      = fmtINR(tPaid);
+  document.getElementById('hdr-locs').textContent     = locs+' Locations';
+  document.getElementById('b-conv-rate').textContent  = pct(nc,nSeatBooked)+' of seat-booked';
+  document.getElementById('kpi-sub').textContent      = '· '+seminars+' seminars · '+nAttended+' attended · '+nSeatBooked+' seat-booked · '+nc+' converted';
+
+  // Section 1 — Seminar Operations
+  document.getElementById('kpiGrid1').innerHTML=[
+    {l:'Seminars Conducted',  v:fmtN(seminars),     s:locs+' locations',                         ic:'🏢',c:'#6366f1'},
+    {l:'In Seminar List',     v:fmtN(total),         s:'Total records in sheet',                  ic:'📋',c:'#8b5cf6'},
+    {l:'Attended Seminar',    v:fmtN(nAttended),     s:pct(nAttended,total)+' of list',           ic:'👥',c:'#06b6d4'},
+    {l:'Seat Booked',         v:fmtN(nSeatBooked),   s:pct(nSeatBooked,nAttended)+' of attended', ic:'🎟',c:'#10b981'},
+    {l:'Seat Book Amount',    v:fmtINR(tSBAmt),      s:'₹ collected at seminar',                  ic:'🏷',c:'#14b8a6'},
+    {l:'Converted (Fully Paid)',v:fmtN(nc),           s:pct(nc,nSeatBooked)+' of seat-booked',     ic:'✅',c:'#10b981'},
+    {l:'Partial Payments',    v:fmtN(nPartial),      s:'Paid but due > 0',                         ic:'⏳',c:'#f97316'},
+    {l:'Conversion Rate',     v:pct(nc,nSeatBooked), s:'Seat Booked → Fully Paid',                 ic:'🎯',c:'#f59e0b'},
+    {l:'Total Revenue',       v:fmtINR(tPaid+addRev),s:'Primary + additional',                    ic:'💰',c:'#f59e0b'},
+    {l:'Primary Revenue',     v:fmtINR(tPaid),       s:'Excl. additional courses',                ic:'📈',c:'#f59e0b'},
+    {l:'Additional Revenue',  v:fmtINR(addRev),      s:'Cross-sell purchases',                    ic:'➕',c:'#a855f7'},
+    {l:'Outstanding Due',     v:fmtINR(tTotalDue),   s:'Primary + additional due',                ic:'⚠️', c:'#ef4444'},
+    {l:'Fully Paid',          v:fmtN(nFullyPaid),    s:'Due = 0',                                 ic:'✔️', c:'#10b981'},
+    {l:'Has Due',             v:fmtN(nHasDue),       s:'Partial payment',                         ic:'⏳',c:'#ef4444'},
+    {l:'Avg Revenue / Conv.', v:fmtINR(nc?tPaid/nc:0),s:'Per converted student',                 ic:'📊',c:'#3b82f6'},
+  ].map(k=>`<div class="kpi" style="--kc:${k.c}"><div class="ki">${k.ic}</div><div class="kl">${k.l}</div><div class="kv">${k.v}</div><div class="ks">${k.s}</div></div>`).join('');
+
+  // Section 2 — Lead Intelligence
+  const wbnConv  = d.filter(s=>s.webinar_type==='Webinar'&&s.converted).length;
+  const nwbnConv = d.filter(s=>s.webinar_type==='Non Webinar'&&s.converted).length;
+  document.getElementById('kpiGrid2').innerHTML=[
+    {l:'Leads Matched',       v:fmtN(leadMatched),   s:'With lead data enriched',                ic:'🔗',c:'#6366f1'},
+    {l:'Webinar Leads',       v:fmtN(wbn),           s:pct(wbn,leadMatched)+' of matched',       ic:'🌐',c:'#06b6d4'},
+    {l:'Non-Webinar Leads',   v:fmtN(nwbn),          s:'Offline / walk-in',                      ic:'🚶',c:'#f97316'},
+    {l:'Webinar Converted',   v:fmtN(wbnConv),       s:pct(wbnConv,wbn)+' conversion rate',      ic:'🌐✅',c:'#10b981'},
+    {l:'Non-Wbn Converted',   v:fmtN(nwbnConv),      s:pct(nwbnConv,nwbn)+' conversion rate',    ic:'🚶✅',c:'#10b981'},
+    {l:'Attempted',           v:fmtN(attL),          s:'Contacts made',                          ic:'📞',c:'#10b981'},
+    {l:'Unattempted',         v:fmtN(unatt),         s:'Not yet contacted',                      ic:'🔕',c:'#ef4444'},
+    {l:'Top Stage',           v:topStage?topStage[0].split(' ').slice(0,3).join(' '):'—',s:topStage?topStage[1]+' students':'', ic:'🏷',c:'#8b5cf6'},
+    {l:'Unique Lead Sources', v:fmtN(new Set(d.map(s=>s.lead_source).filter(x=>x&&x!=='nan')).size), s:'Distinct sources', ic:'📡',c:'#a855f7'},
+    {l:'Unique Campaigns',    v:fmtN(new Set(d.map(s=>s.campaign_name).filter(x=>x&&x!=='nan')).size),s:'Active campaigns', ic:'📢',c:'#3b82f6'},
+  ].map(k=>`<div class="kpi" style="--kc:${k.c}"><div class="ki">${k.ic}</div><div class="kl">${k.l}</div><div class="kv">${k.v}</div><div class="ks">${k.s}</div></div>`).join('');
+}
+
+// ── OVERVIEW CHARTS ────────────────────────────────────────────────────────────
+function renderOverviewCharts(){
+  const d=FILTERED;
+  // By date — use attended vs converted(paid)
+  const byDate={};
+  d.forEach(s=>{const dt=s.seminar_date||'Unknown';if(!byDate[dt])byDate[dt]={att:0,sb:0,conv:0};if(s.attended)byDate[dt].att++;if(s.seat_booked)byDate[dt].sb++;if(s.converted)byDate[dt].conv++;});
+  const dKeys=Object.keys(byDate).sort();
+  mc('chartByDate',{type:'bar',data:{labels:dKeys,datasets:[
+    {label:'Attended',  data:dKeys.map(k=>byDate[k].att), backgroundColor:'rgba(99,102,241,.65)',borderRadius:3},
+    {label:'Seat Booked',data:dKeys.map(k=>byDate[k].sb),backgroundColor:'rgba(6,182,212,.6)',borderRadius:3},
+    {label:'Converted', data:dKeys.map(k=>byDate[k].conv),backgroundColor:'rgba(16,185,129,.9)',borderRadius:3},
+  ]},options:{plugins:{legend:{position:'bottom'}},scales:{x:{ticks:{font:{size:9}}},y:{beginAtZero:true}}}});
+
+  // By location
+  const byLoc={};
+  d.forEach(s=>{const l=s.place||'?';if(!byLoc[l])byLoc[l]={att:0,conv:0,rev:0};if(s.attended)byLoc[l].att++;if(s.converted){byLoc[l].conv++;byLoc[l].rev+=s.primary_paid;}});
+  const topLocs=Object.entries(byLoc).sort((a,b)=>b[1].att-a[1].att).slice(0,12);
+  mc('chartByLoc',{type:'bar',data:{labels:topLocs.map(([l])=>l.split(' ').slice(0,2).join(' ')),datasets:[
+    {label:'Attended', data:topLocs.map(([,v])=>v.att), backgroundColor:'rgba(99,102,241,.65)',borderRadius:3},
+    {label:'Converted',data:topLocs.map(([,v])=>v.conv),backgroundColor:'rgba(16,185,129,.9)',borderRadius:3},
+  ]},options:{plugins:{legend:{position:'bottom'}},scales:{x:{ticks:{font:{size:9}}},y:{beginAtZero:true}}}});
+
+  const bySess={};d.forEach(s=>{const k=s.session||'Unknown';bySess[k]=(bySess[k]||0)+1;});
+  mc('chartSession',{type:'doughnut',data:{labels:Object.keys(bySess),datasets:[{data:Object.values(bySess),backgroundColor:COLORS,borderWidth:2,borderColor:'#08101d'}]},options:{cutout:'55%',plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}}}}});
+
+  const byLT={};d.filter(s=>s.webinar_type&&s.webinar_type!=='nan').forEach(s=>{byLT[s.webinar_type]=(byLT[s.webinar_type]||0)+1;});
+  mc('chartLeadType',{type:'doughnut',data:{labels:Object.keys(byLT),datasets:[{data:Object.values(byLT),backgroundColor:COLORS,borderWidth:2,borderColor:'#08101d'}]},options:{cutout:'55%',plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}}}}});
+
+  const revLoc=Object.entries(byLoc).sort((a,b)=>b[1].rev-a[1].rev).slice(0,10);
+  mc('chartRevLoc',{type:'bar',data:{labels:revLoc.map(([l])=>l.split(' ').slice(0,2).join(' ')),datasets:[{label:'Revenue',data:revLoc.map(([,v])=>v.rev),backgroundColor:COLORS.map(c=>c+'cc'),borderRadius:4}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>fmtINR(v)}},y:{ticks:{font:{size:10}}}}}});
+
+  // Trainer table
+  const byTr={};d.forEach(s=>{const t=s.trainer||'Unknown';if(!byTr[t])byTr[t]={att:0,sb:0,conv:0,rev:0};if(s.attended)byTr[t].att++;if(s.seat_booked)byTr[t].sb++;if(s.converted){byTr[t].conv++;byTr[t].rev+=s.primary_paid;}});
+  const trRows=Object.entries(byTr).sort((a,b)=>b[1].att-a[1].att);
+  document.getElementById('trainer-sub').textContent='· '+trRows.length+' trainers';
+  document.getElementById('trainerTable').innerHTML=`<table><thead><tr><th>Trainer</th><th>Attended</th><th>Seat Booked</th><th>Converted</th><th>SB→Conv%</th><th>Revenue</th><th>Avg Rev</th></tr></thead><tbody>
+    ${trRows.map(([tr,v])=>`<tr><td style="color:var(--t1);font-weight:600">${tr}</td><td>${fmtN(v.att)}</td><td>${fmtN(v.sb)}</td><td style="color:var(--a3)">${fmtN(v.conv)}</td><td><span class="bdg ${v.conv/(v.sb||1)>=.3?'bg':v.conv/(v.sb||1)>=.15?'by':'br'}">${pct(v.conv,v.sb||1)}</span></td><td style="color:var(--a2)">${fmtINR(v.rev)}</td><td>${fmtINR(v.conv?v.rev/v.conv:0)}</td></tr>`).join('')}
+    </tbody></table>`;
+}
+
+// ── FUNNEL TAB ─────────────────────────────────────────────────────────────────
+function renderFunnelTab(){
+  const d=FILTERED;
+  const total      = d.length;
+  const nAttended  = d.filter(s=>s.attended).length;
+  const nSB        = d.filter(s=>s.seat_booked).length;
+  const nConv      = d.filter(s=>s.converted).length;
+  const nFull      = d.filter(s=>s.converted&&s.primary_due<=0).length;
+  const maxV       = total||1;
+  const steps=[
+    {label:'In Seminar List', val:total,    color:'#6366f1', base:maxV},
+    {label:'Attended',        val:nAttended,color:'#8b5cf6', base:maxV},
+    {label:'Seat Booked',     val:nSB,      color:'#06b6d4', base:maxV},
+    {label:'Converted (Paid)',val:nConv,    color:'#10b981', base:maxV},
+    {label:'Fully Paid',      val:nFull,    color:'#f59e0b', base:maxV},
+  ];
+  document.getElementById('funnelChart').innerHTML=steps.map((s,i)=>{
+    const w=(s.val/s.base*100).toFixed(1);
+    const fromPrev=i>0?pct(s.val,steps[i-1].val):'100%';
+    return`<div class="funnel-step">
+      <div class="funnel-label">${s.label}</div>
+      <div class="funnel-bar-wrap"><div class="funnel-bar" style="width:${w}%;background:${s.color}">${fmtN(s.val)}</div></div>
+      <div class="funnel-val"><div>${w}%</div><div class="funnel-pct">${i>0?fromPrev+' of prev':''}</div></div>
+    </div>`;
+  }).join('');
+
+  // Funnel by lead type
+  const wbn=d.filter(s=>s.webinar_type==='Webinar');
+  const nwbn=d.filter(s=>s.webinar_type==='Non Webinar');
+  const funnelCats=['Attended','Seat Booked','Converted','Fully Paid'];
+  const wbnVals=[wbn.filter(s=>s.attended).length,wbn.filter(s=>s.seat_booked).length,wbn.filter(s=>s.converted).length,wbn.filter(s=>s.converted&&s.primary_due<=0).length];
+  const nwbnVals=[nwbn.filter(s=>s.attended).length,nwbn.filter(s=>s.seat_booked).length,nwbn.filter(s=>s.converted).length,nwbn.filter(s=>s.converted&&s.primary_due<=0).length];
+  mc('chartFunnelLead',{type:'bar',data:{labels:funnelCats,datasets:[
+    {label:'Webinar',    data:wbnVals,  backgroundColor:'rgba(99,102,241,.75)',borderRadius:4},
+    {label:'Non-Webinar',data:nwbnVals,backgroundColor:'rgba(249,115,22,.75)',borderRadius:4},
+  ]},options:{plugins:{legend:{position:'bottom'}},scales:{x:{},y:{beginAtZero:true}}}});
+
+  // Conversion rate by location
+  const locConv={};
+  d.forEach(s=>{const l=s.place||'?';if(!locConv[l])locConv[l]={sb:0,conv:0};if(s.seat_booked)locConv[l].sb++;if(s.converted)locConv[l].conv++;});
+  const topLC=Object.entries(locConv).filter(([,v])=>v.sb>=3).sort((a,b)=>(b[1].conv/b[1].sb)-(a[1].conv/a[1].sb)).slice(0,15);
+  mc('chartFunnelLoc',{type:'bar',data:{labels:topLC.map(([l])=>l.split(' ').slice(0,2).join(' ')),datasets:[{label:'Conv%',data:topLC.map(([,v])=>+(v.conv/(v.sb||1)*100).toFixed(1)),backgroundColor:'rgba(16,185,129,.75)',borderRadius:4}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>v+'%'},max:100},y:{ticks:{font:{size:9}}}}}});
+
+  // Seminars conducted table
+  const semMap={};
+  d.forEach(s=>{const k=s.seminar_date+'||'+s.place;if(!semMap[k])semMap[k]={date:s.seminar_date,place:s.place,trainer:s.trainer,session:s.session,total:0,attended:0,sb:0,conv:0,rev:0,due:0};const m=semMap[k];m.total++;if(s.attended)m.attended++;if(s.seat_booked)m.sb++;if(s.converted){m.conv++;m.rev+=s.primary_paid;m.due+=s.primary_due;}});
+  const semRows=Object.values(semMap).sort((a,b)=>a.date.localeCompare(b.date));
+  document.getElementById('seminarsTable').innerHTML=`<table><thead><tr>
+    <th>#</th><th>Date</th><th>Location</th><th>Trainer</th><th>Session</th>
+    <th>In List</th><th>Attended</th><th>Seat Booked</th><th>Converted</th><th>SB→Conv%</th><th>Revenue</th><th>Due</th>
+  </tr></thead><tbody>
+  ${semRows.map((s,i)=>`<tr>
+    <td style="color:var(--t3)">${i+1}</td>
+    <td style="color:var(--t1)">${s.date||'—'}</td>
+    <td style="color:var(--t1);font-weight:600">${s.place||'—'}</td>
+    <td style="font-size:11px;color:var(--t2)">${s.trainer||'—'}</td>
+    <td>${s.session||'—'}</td>
+    <td>${fmtN(s.total)}</td>
+    <td>${fmtN(s.attended)}</td>
+    <td style="color:var(--a6)">${fmtN(s.sb)}</td>
+    <td style="color:var(--a3);font-weight:700">${fmtN(s.conv)}</td>
+    <td><span class="bdg ${s.conv/(s.sb||1)>=.3?'bg':s.conv/(s.sb||1)>=.15?'by':'br'}">${pct(s.conv,s.sb||1)}</span></td>
+    <td style="color:var(--a2)">${fmtINR(s.rev)}</td>
+    <td style="color:var(--a4)">${s.due>0?fmtINR(s.due):'₹0'}</td>
+  </tr>`).join('')}
+  <tr class="tfoot"><td colspan="5">TOTAL (${semRows.length} seminars)</td>
+    <td>${fmtN(semRows.reduce((a,s)=>a+s.total,0))}</td>
+    <td>${fmtN(semRows.reduce((a,s)=>a+s.attended,0))}</td>
+    <td style="color:var(--a6)">${fmtN(semRows.reduce((a,s)=>a+s.sb,0))}</td>
+    <td style="color:var(--a3)">${fmtN(semRows.reduce((a,s)=>a+s.conv,0))}</td>
+    <td></td>
+    <td style="color:var(--a2)">${fmtINR(semRows.reduce((a,s)=>a+s.rev,0))}</td>
+    <td style="color:var(--a4)">${fmtINR(semRows.reduce((a,s)=>a+s.due,0))}</td>
+  </tr></tbody></table>`;
+}
+
+// ── COURSES TAB ───────────────────────────────────────────────────────────────
+function renderCourseTab(){
+  const conv=FILTERED.filter(s=>s.converted);
+
+  // Build unified course map: primary + all advanced paid courses
+  const allCourses={}; // {courseName: {count,paid,due,type:'PRIMARY'|'ADVANCED'}}
+  const _num=v=>{const n=parseFloat(v);return isNaN(n)?0:n;};
+  // Include partial payers too (has_partial) in course stats
+  FILTERED.filter(s=>s.converted||s.has_partial).forEach(s=>{
+    // Primary course
+    if(s.primary_course && s.primary_paid>0){
+      if(!allCourses[s.primary_course])allCourses[s.primary_course]={count:0,paid:0,due:0,total:0,type:'PRIMARY'};
+      allCourses[s.primary_course].count++;
+      allCourses[s.primary_course].paid+=_num(s.primary_paid);
+      allCourses[s.primary_course].due+=_num(s.primary_due);
+      allCourses[s.primary_course].total+=_num(s.primary_total)||(_num(s.primary_paid)+_num(s.primary_due));
+    }
+    // Advanced courses (additional_courses is array of objects)
+    if(Array.isArray(s.additional_courses)){
+      s.additional_courses.forEach(a=>{
+        const cn=typeof a==='object'?(a.course||''):String(a);
+        if(!cn||cn==='nan'||cn==='undefined')return;
+        const paid=typeof a==='object'?_num(a.paid):0;
+        const due=typeof a==='object'?_num(a.due):0;
+        if(paid<=0)return; // skip unpaid
+        if(!allCourses[cn])allCourses[cn]={count:0,paid:0,due:0,total:0,type:'ADVANCED'};
+        allCourses[cn].count++;
+        allCourses[cn].paid+=paid;
+        allCourses[cn].due+=due;
+        allCourses[cn].total+=paid+due;
+      });
+    }
+  });
+
+  const rows=Object.entries(allCourses).sort((a,b)=>b[1].paid-a[1].paid);
+  const primaryRows=rows.filter(([,v])=>v.type==='PRIMARY');
+  const advRows=rows.filter(([,v])=>v.type==='ADVANCED');
+  const top=rows.slice(0,12);
+  const totalStudents=conv.length||1;
+
+  mc('chartCourseCnt',{type:'bar',data:{labels:top.map(([c])=>c.length>30?c.slice(0,30)+'…':c),datasets:[{label:'Students',data:top.map(([,v])=>v.count),backgroundColor:top.map(([,v])=>v.type==='PRIMARY'?'rgba(245,158,11,.85)':'rgba(139,92,246,.75)'),borderRadius:4}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{},y:{ticks:{font:{size:9}}}}}});
+  mc('chartCourseShare',{type:'doughnut',data:{labels:rows.slice(0,10).map(([c])=>c.length>25?c.slice(0,25)+'…':c),datasets:[{data:rows.slice(0,10).map(([,v])=>v.count),backgroundColor:COLORS,borderWidth:2,borderColor:'#08101d'}]},options:{cutout:'40%',plugins:{legend:{position:'right',labels:{font:{size:9},boxWidth:8}}}}});
+  mc('chartCourseRev',{type:'bar',data:{labels:top.map(([c])=>c.length>30?c.slice(0,30)+'…':c),datasets:[{label:'Revenue',data:top.map(([,v])=>v.paid),backgroundColor:top.map(([,v])=>v.type==='PRIMARY'?'rgba(245,158,11,.85)':'rgba(139,92,246,.75)'),borderRadius:4}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>fmtINR(v)}},y:{ticks:{font:{size:9}}}}}});
+  mc('chartCoursePD',{type:'bar',data:{labels:rows.slice(0,10).map(([c])=>c.length>22?c.slice(0,22)+'…':c),datasets:[{label:'Paid',data:rows.slice(0,10).map(([,v])=>v.paid),backgroundColor:'rgba(16,185,129,.8)',borderRadius:3},{label:'Due',data:rows.slice(0,10).map(([,v])=>v.due),backgroundColor:'rgba(239,68,68,.75)',borderRadius:3}]},options:{plugins:{legend:{position:'bottom'}},scales:{x:{stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{callback:v=>fmtINR(v)}}}}});
+
+  document.getElementById('courseTable').innerHTML=`<table><thead><tr>
+    <th>Type</th><th>Course</th><th>Students</th><th>Share%</th><th>Total Fees</th><th>Collected</th><th>Outstanding Due</th><th>Collection%</th><th>Avg Collected</th><th>Fully Paid</th>
+  </tr></thead><tbody>
+  ${rows.map(([c,v])=>{
+    const isPrimary=v.type==='PRIMARY';
+    const fp=isPrimary?FILTERED.filter(s=>s.converted&&s.primary_course===c&&s.primary_due<=0).length
+      :FILTERED.filter(s=>Array.isArray(s.additional_courses)&&s.additional_courses.some(a=>(a.course||a)===c&&(a.due||0)<=0)).length;
+    const totalFees=v.total||v.paid+v.due;
+    const collRate=totalFees>0?(v.paid/totalFees*100).toFixed(1):100;
+    return`<tr>
+      <td><span class="bdg ${isPrimary?'by':'bp'}">${isPrimary?'🟡 PTI':'🔵 ADV'}</span></td>
+      <td style="color:var(--t1);max-width:220px;overflow:hidden;text-overflow:ellipsis;font-weight:${isPrimary?700:400}" title="${c}">${c}</td>
+      <td>${fmtN(v.count)}</td>
+      <td><span class="bdg bb">${pct(v.count,totalStudents)}</span></td>
+      <td style="color:var(--t2)">${fmtINR(totalFees)}</td>
+      <td style="color:${isPrimary?'var(--a2)':'var(--a5)'};">${fmtINR(v.paid)}</td>
+      <td style="color:${v.due>0?'var(--a4)':'var(--a3)'}">${v.due>0?fmtINR(v.due):'₹0'}</td>
+      <td><span class="bdg ${collRate>=90?'bg':collRate>=60?'by':'br'}">${collRate}%</span></td>
+      <td>${fmtINR(v.count?v.paid/v.count:0)}</td>
+      <td style="color:var(--a3)">${fmtN(fp)}</td>
+    </tr>`;
+  }).join('')}
+  <tr class="tfoot">
+    <td colspan="2">TOTAL (${rows.length} courses: ${primaryRows.length} PTI · ${advRows.length} advanced)</td>
+    <td></td><td></td>
+    <td style="color:var(--t2)">${fmtINR(rows.reduce((t,[,v])=>t+(v.total||v.paid+v.due),0))}</td>
+    <td style="color:var(--a2)">${fmtINR(rows.reduce((t,[,v])=>t+v.paid,0))}</td>
+    <td style="color:var(--a4)">${fmtINR(rows.reduce((t,[,v])=>t+v.due,0))}</td>
+    <td></td><td></td><td></td>
+  </tr>
+  </tbody></table>`;
+}
+
+// ── LEADS TAB ─────────────────────────────────────────────────────────────────
+function renderLeadsTab(){
+  const d=FILTERED;
+  const matched=d.filter(s=>s.lead_source&&s.lead_source!=='nan'&&s.lead_source!=='');
+  const wbn=d.filter(s=>s.webinar_type==='Webinar').length;
+  const nwbn=d.filter(s=>s.webinar_type==='Non Webinar').length;
+  const att=d.filter(s=>s.attempted==='Attempted').length;
+  const unatt=d.filter(s=>s.attempted==='Unattempted').length;
+  const wbnConv=d.filter(s=>s.webinar_type==='Webinar'&&s.converted).length;
+  const nwbnConv=d.filter(s=>s.webinar_type==='Non Webinar'&&s.converted).length;
+  document.getElementById('leadsKpiGrid').innerHTML=[
+    {l:'Leads Matched',    v:fmtN(matched.length),  s:'With lead enrichment',          ic:'🔗',c:'#6366f1'},
+    {l:'Webinar',          v:fmtN(wbn),             s:pct(wbn,matched.length)+' of matched',ic:'🌐',c:'#06b6d4'},
+    {l:'Non-Webinar',      v:fmtN(nwbn),            s:'Offline / walk-in',             ic:'🚶',c:'#f97316'},
+    {l:'Wbn Converted',    v:fmtN(wbnConv),         s:pct(wbnConv,wbn)+' rate',        ic:'🌐✅',c:'#10b981'},
+    {l:'Non-Wbn Converted',v:fmtN(nwbnConv),        s:pct(nwbnConv,nwbn)+' rate',      ic:'🚶✅',c:'#10b981'},
+    {l:'Attempted',        v:fmtN(att),             s:'Contacts made',                 ic:'📞',c:'#10b981'},
+    {l:'Unattempted',      v:fmtN(unatt),           s:'Not contacted yet',             ic:'🔕',c:'#ef4444'},
+    {l:'Att Conv Rate',    v:pct(d.filter(s=>s.attempted==='Attempted'&&s.converted).length,att),s:'Attempted → paid',ic:'📊',c:'#8b5cf6'},
+  ].map(k=>`<div class="kpi" style="--kc:${k.c}"><div class="ki">${k.ic}</div><div class="kl">${k.l}</div><div class="kv">${k.v}</div><div class="ks">${k.s}</div></div>`).join('');
+
+  const bySrc={};d.filter(s=>s.lead_source&&s.lead_source!=='nan').forEach(s=>{if(!bySrc[s.lead_source])bySrc[s.lead_source]={count:0,conv:0};bySrc[s.lead_source].count++;if(s.converted)bySrc[s.lead_source].conv++;});
+  const srcRows=Object.entries(bySrc).sort((a,b)=>b[1].count-a[1].count).slice(0,12);
+  mc('chartLeadSrc',{type:'bar',data:{labels:srcRows.map(([k])=>k),datasets:[{label:'Total',data:srcRows.map(([,v])=>v.count),backgroundColor:'rgba(99,102,241,.65)',borderRadius:3},{label:'Converted',data:srcRows.map(([,v])=>v.conv),backgroundColor:'rgba(16,185,129,.85)',borderRadius:3}]},options:{indexAxis:'y',plugins:{legend:{position:'bottom'}},scales:{x:{},y:{ticks:{font:{size:9}}}}}});
+
+  const byStatus={};d.filter(s=>s.lead_status&&s.lead_status!=='nan').forEach(s=>{byStatus[s.lead_status]=(byStatus[s.lead_status]||0)+1;});
+  mc('chartLeadStatus',{type:'doughnut',data:{labels:Object.keys(byStatus),datasets:[{data:Object.values(byStatus),backgroundColor:COLORS,borderWidth:2,borderColor:'#08101d'}]},options:{cutout:'50%',plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}}}}});
+
+  const byStage={};d.filter(s=>s.stage_name&&s.stage_name!=='nan').forEach(s=>{if(!byStage[s.stage_name])byStage[s.stage_name]={count:0,conv:0};byStage[s.stage_name].count++;if(s.converted)byStage[s.stage_name].conv++;});
+  const stageRows=Object.entries(byStage).sort((a,b)=>b[1].count-a[1].count).slice(0,12);
+  mc('chartStage',{type:'bar',data:{labels:stageRows.map(([k])=>k.length>22?k.slice(0,22)+'…':k),datasets:[{label:'Total',data:stageRows.map(([,v])=>v.count),backgroundColor:'rgba(139,92,246,.7)',borderRadius:3},{label:'Converted',data:stageRows.map(([,v])=>v.conv),backgroundColor:'rgba(16,185,129,.85)',borderRadius:3}]},options:{indexAxis:'y',plugins:{legend:{position:'bottom'}},scales:{x:{},y:{ticks:{font:{size:9}}}}}});
+
+  const byOwner={};d.filter(s=>s.lead_owner&&s.lead_owner!=='nan').forEach(s=>{if(!byOwner[s.lead_owner])byOwner[s.lead_owner]={count:0,conv:0};byOwner[s.lead_owner].count++;if(s.converted)byOwner[s.lead_owner].conv++;});
+  const ownerRows=Object.entries(byOwner).sort((a,b)=>b[1].count-a[1].count).slice(0,12);
+  mc('chartOwner',{type:'bar',data:{labels:ownerRows.map(([k])=>k.split(' ').slice(0,2).join(' ')),datasets:[{label:'Leads',data:ownerRows.map(([,v])=>v.count),backgroundColor:'rgba(99,102,241,.65)',borderRadius:3},{label:'Converted',data:ownerRows.map(([,v])=>v.conv),backgroundColor:'rgba(16,185,129,.85)',borderRadius:3}]},options:{plugins:{legend:{position:'bottom'}},scales:{x:{},y:{beginAtZero:true}}}});
+
+  const byCamp={};d.filter(s=>s.campaign_name&&s.campaign_name!=='nan').forEach(s=>{if(!byCamp[s.campaign_name])byCamp[s.campaign_name]={count:0,conv:0,rev:0};byCamp[s.campaign_name].count++;if(s.converted){byCamp[s.campaign_name].conv++;byCamp[s.campaign_name].rev+=s.primary_paid;}});
+  const campRows=Object.entries(byCamp).sort((a,b)=>b[1].count-a[1].count);
+  document.getElementById('campaignTable').innerHTML=`<table><thead><tr><th>Campaign</th><th>Leads</th><th>Converted</th><th>Conv Rate</th><th>Revenue</th></tr></thead><tbody>
+    ${campRows.map(([c,v])=>`<tr><td style="color:var(--t1)">${c}</td><td>${fmtN(v.count)}</td><td style="color:var(--a3)">${fmtN(v.conv)}</td><td><span class="bdg ${v.conv/v.count>=.3?'bg':v.conv/v.count>=.15?'by':'br'}">${pct(v.conv,v.count)}</span></td><td style="color:var(--a2)">${fmtINR(v.rev)}</td></tr>`).join('')}
+    </tbody></table>`;
+  renderLeadTable();
+}
+
+function renderLeadTable(){
+  const search=(document.getElementById('leadSearch')?.value||'').toLowerCase();
+  let rows=FILTERED.filter(s=>!search||[s.name,s.mobile,s.place,s.lead_source,s.stage_name,s.lead_owner].join(' ').toLowerCase().includes(search));
+  const total=rows.length,start=(leadPage-1)*PG,end=Math.min(start+PG,total);
+  document.getElementById('leadPagInfo').textContent=`${start+1}–${end} of ${total}`;
+  document.getElementById('leadTable').innerHTML=`<table><thead><tr><th>Name</th><th>Mobile</th><th>Location</th><th>Date</th><th>Converted</th><th>Paid</th><th>Lead Type</th><th>Source</th><th>Lead Status</th><th>Stage</th><th>Owner</th><th>Attempted</th><th>Email</th></tr></thead><tbody>
+    ${rows.slice(start,end).map(s=>`<tr><td style="color:var(--t1);font-weight:600">${s.name||'—'}</td><td>${s.mobile||'—'}</td><td>${s.place||'—'}</td><td>${s.seminar_date||'—'}</td><td>${(s.converted)?'<span class="bdg bg">✅ Yes</span>':'<span class="bdg br">❌ No</span>'}</td><td style="color:var(--a2)">${s.primary_paid>0?fmtINR(s.primary_paid):'—'}</td><td>${s.webinar_type||'—'}</td><td>${s.lead_source||'—'}</td><td>${s.lead_status||'—'}</td><td>${s.stage_name||'—'}</td><td>${s.lead_owner||'—'}</td><td>${s.attempted||'—'}</td><td>${s.email||'—'}</td></tr>`).join('')}
+    </tbody></table>`;
+  renderPag('leadPag',total,PG,leadPage,p=>{leadPage=p;renderLeadTable();});
+}
+
+// ── SALES TAB ─────────────────────────────────────────────────────────────────
+function renderSalesTab(){
+  const srMap={};
+  FILTERED.filter(s=>s.converted&&s.sales_rep&&s.sales_rep!=='nan').forEach(s=>{
+    const r=s.sales_rep;if(!srMap[r])srMap[r]={deals:0,revenue:0,due:0,active:0};
+    srMap[r].deals++;srMap[r].revenue+=s.primary_paid;srMap[r].due+=s.primary_due;
+    if(s.primary_status==='Active')srMap[r].active++;
+  });
+  const totalRev=Object.values(srMap).reduce((s,v)=>s+v.revenue,0);
+  const totalDeals=Object.values(srMap).reduce((s,v)=>s+v.deals,0);
+  const top1=Object.entries(srMap).sort((a,b)=>b[1].revenue-a[1].revenue)[0];
+  document.getElementById('salesKpiGrid').innerHTML=[
+    {l:'Sales Reps',      v:fmtN(Object.keys(srMap).length), s:'Active representatives', ic:'👥',c:'#6366f1'},
+    {l:'Total Deals',     v:fmtN(totalDeals),                s:'Converted students',     ic:'🤝',c:'#10b981'},
+    {l:'Total Collected', v:fmtINR(totalRev),                s:'Via sales team',          ic:'💰',c:'#f59e0b'},
+    {l:'Top Rep',         v:top1?top1[0].split(' ')[0]:'—',  s:top1?fmtINR(top1[1].revenue):'', ic:'🏆',c:'#f59e0b'},
+    {l:'Avg Deal Size',   v:fmtINR(totalDeals?totalRev/totalDeals:0), s:'Overall average',ic:'📊',c:'#10b981'},
+  ].map(k=>`<div class="kpi" style="--kc:${k.c}"><div class="ki">${k.ic}</div><div class="kl">${k.l}</div><div class="kv">${k.v}</div><div class="ks">${k.s}</div></div>`).join('');
+  const topRev=Object.entries(srMap).sort((a,b)=>b[1].revenue-a[1].revenue).slice(0,15);
+  mc('chartSalesRev',{type:'bar',data:{labels:topRev.map(([n])=>n.split(' ').slice(0,2).join(' ')),datasets:[{label:'Revenue',data:topRev.map(([,v])=>v.revenue),backgroundColor:COLORS.map(c=>c+'cc'),borderRadius:4}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>fmtINR(v)}},y:{ticks:{font:{size:10}}}}}});
+  const topDeals=Object.entries(srMap).sort((a,b)=>b[1].deals-a[1].deals).slice(0,15);
+  mc('chartSalesDeals',{type:'bar',data:{labels:topDeals.map(([n])=>n.split(' ').slice(0,2).join(' ')),datasets:[{label:'Deals',data:topDeals.map(([,v])=>v.deals),backgroundColor:'rgba(139,92,246,.75)',borderRadius:4}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{},y:{ticks:{font:{size:10}}}}}});
+  renderSalesTable(srMap,totalRev);
+}
+
+function renderSalesTable(srMap,totalRev){
+  if(!srMap){srMap={};FILTERED.filter(s=>s.converted&&s.sales_rep&&s.sales_rep!=='nan').forEach(s=>{const r=s.sales_rep;if(!srMap[r])srMap[r]={deals:0,revenue:0,due:0,active:0};srMap[r].deals++;srMap[r].revenue+=s.primary_paid;srMap[r].due+=s.primary_due;if(s.primary_status==='Active')srMap[r].active++;});totalRev=Object.values(srMap).reduce((s,v)=>s+v.revenue,0);}
+  const search=(document.getElementById('salesSearch')?.value||'').toLowerCase();
+  let rows=Object.entries(srMap).sort((a,b)=>b[1].revenue-a[1].revenue).filter(([n])=>!search||n.toLowerCase().includes(search));
+  const total=rows.length,start=(salesPage-1)*PG,end=Math.min(start+PG,total);
+  document.getElementById('salesPagInfo').textContent=`${start+1}–${end} of ${total} reps`;
+  document.getElementById('salesTable').innerHTML=`<table><thead><tr><th>Rank</th><th>Sales Rep</th><th>Deals</th><th>Revenue Collected</th><th>Outstanding Due</th><th>Active</th><th>Active%</th><th>Avg Deal</th><th>Rev Share</th><th>Top Course</th></tr></thead><tbody>
+    ${rows.slice(start,end).map(([n,v],i)=>{const rank=start+i+1;const collR=(v.revenue/(v.revenue+v.due+0.01)*100).toFixed(0);
+    return`<tr><td><span class="rnk ${rank<=3?'r'+rank:''}">${rank}</span></td><td style="color:var(--t1);font-weight:600">${n}</td><td>${fmtN(v.deals)}</td><td style="color:var(--a2);font-weight:700">${fmtINR(v.revenue)}</td><td style="color:${v.due>0?'var(--a4)':'var(--a3)'}"><span class="bdg ${v.due<=0?'bg':'br'}">${v.due>0?fmtINR(v.due):'₹0'}</span></td><td style="color:var(--a3)">${fmtN(v.active)}</td><td><span class="bdg ${v.active/v.deals>=.7?'bg':v.active/v.deals>=.5?'by':'br'}">${pct(v.active,v.deals)}</span></td><td>${fmtINR(v.deals?v.revenue/v.deals:0)}</td><td><span class="bdg bb">${pct(v.revenue,totalRev||1)}</span></td><td style="font-size:10px;color:var(--t2);max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${v.top_course||''}">${v.top_course?v.top_course.slice(0,20)+'…':'—'}</td></tr>`;}).join('')}
+    </tbody></table>`;
+  renderPag('salesPag',total,PG,salesPage,p=>{salesPage=p;renderSalesTable();});
+}
+
+// ── STUDENTS TAB ──────────────────────────────────────────────────────────────
+function renderStudentsTabs(){
+  const nc=FILTERED.filter(s=>s.converted).length;
+  document.getElementById('stu-sub').textContent='· '+FILTERED.length+' in list · '+FILTERED.filter(s=>s.attended).length+' attended · '+nc+' converted';
+  renderAttTable(); renderConvTable(); renderOrdersTable();
+}
+
+function renderAttTable(){
+  const search=(document.getElementById('attSearch')?.value||'').toLowerCase();
+  let rows=FILTERED.filter(s=>!search||[s.name,s.mobile,s.place,s.trainer,s.seminar_date].join(' ').toLowerCase().includes(search));
+  const total=rows.length,start=(attPage-1)*PG,end=Math.min(start+PG,total);
+  document.getElementById('attPagInfo').textContent=`${start+1}–${end} of ${total}`;
+  document.getElementById('attTable').innerHTML=`<table><thead><tr><th>#</th><th>Name</th><th>Mobile</th><th>Location</th><th>Date</th><th>Session</th><th>Trainer</th><th>Attended</th><th>Seat Booked</th><th>Seat Amt</th><th>Status</th><th>Paid</th><th>Total Fees</th><th>Due</th><th>Lead Type</th><th>Source</th></tr></thead><tbody>
+    ${rows.slice(start,end).map((s,i)=>`<tr><td style="color:var(--t3)">${start+i+1}</td><td style="color:var(--t1);font-weight:600">${s.name||'—'}</td><td>${s.mobile||'—'}</td><td>${s.place||'—'}</td><td>${s.seminar_date||'—'}</td><td>${s.session||'—'}</td><td style="font-size:11px">${s.trainer||'—'}</td><td>${s.attended?'✅':'—'}</td><td>${s.seat_booked?'✅':'—'}</td><td style="color:var(--a3)">${s.seat_book_amount>0?fmtINR(s.seat_book_amount):'—'}</td><td>${(s.converted)?'<span class="bdg bg">✅</span>':'<span class="bdg br">❌</span>'}</td><td style="color:var(--a2)">${s.primary_paid>0?fmtINR(s.primary_paid):'—'}</td><td style="color:var(--a4)">${s.primary_due>0?fmtINR(s.primary_due):'₹0'}</td><td>${s.webinar_type||'—'}</td><td>${s.lead_source||'—'}</td></tr>`).join('')}
+    </tbody></table>`;
+  renderPag('attPag',total,PG,attPage,p=>{attPage=p;renderAttTable();});
+}
+
+function renderConvTable(){
+  const search=(document.getElementById('convSearch')?.value||'').toLowerCase();
+  let rows=FILTERED.filter(s=>s.converted&&(!search||[s.name,s.mobile,s.place,s.primary_course].join(' ').toLowerCase().includes(search)));
+  const total=rows.length,start=(convPage-1)*PG,end=Math.min(start+PG,total);
+  document.getElementById('convPagInfo').textContent=`${start+1}–${end} of ${total}`;
+  document.getElementById('convTable').innerHTML=`<table><thead><tr><th>#</th><th>Name</th><th>Mobile</th><th>Location</th><th>Seminar Date</th><th>Primary Course (PTI)</th><th>Order Date</th><th>Primary Paid</th><th>Primary Due</th><th>Status</th><th>Mode</th><th>Sales Rep</th><th>Advanced Courses</th><th>Lead Type</th></tr></thead><tbody>
+    ${rows.slice(start,end).map((s,i)=>`<tr><td style="color:var(--t3)">${start+i+1}</td><td style="color:var(--t1);font-weight:600">${s.name||'—'}</td><td>${s.mobile||'—'}</td><td>${s.place||'—'}</td><td>${s.seminar_date||'—'}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;font-size:11px" title="${s.primary_course||''}">${s.primary_course||'—'}</td><td>${s.primary_order_date||'—'}</td><td style="color:var(--a2);font-weight:700">${fmtINR(s.primary_paid)}</td><td style="color:var(--a4)">${s.primary_due>0?fmtINR(s.primary_due):'₹0'}</td><td><span class="bdg ${s.primary_status==='Active'?'bg':s.primary_status==='Partially Converted'?'by':'br'}">${s.primary_status||'—'}</span></td><td>${s.primary_mode||'—'}</td><td>${s.sales_rep||'—'}</td><td style="font-size:10px">${Array.isArray(s.additional_courses)&&s.additional_courses.length?s.additional_courses.map(a=>a.course||a).join(' | '):'—'}</td><td>${s.webinar_type||'—'}</td></tr>`).join('')}
+    </tbody></table>`;
+  renderPag('convPag',total,PG,convPage,p=>{convPage=p;renderConvTable();});
+}
+
+function renderOrdersTable(){
+  const locMap={};
+  FILTERED_ORDERS.forEach(o=>{const l=o.place||'?';if(!locMap[l])locMap[l]={students:new Set(),orders:0,paid:0,due:0};locMap[l].students.add(o.mobile);locMap[l].orders++;locMap[l].paid+=o.paid_amount;locMap[l].due+=o.total_due;});
+  const rows=Object.entries(locMap).sort((a,b)=>b[1].paid-a[1].paid);
+  document.getElementById('ordersTable').innerHTML=`<table><thead><tr><th>#</th><th>Location</th><th>Students</th><th>Orders</th><th>Total Paid</th><th>Total Due</th></tr></thead><tbody>
+    ${rows.map(([l,v],i)=>`<tr><td style="color:var(--t3)">${i+1}</td><td style="color:var(--t1);font-weight:600">${l}</td><td style="color:var(--a1)">${v.students.size}</td><td>${v.orders}</td><td style="color:var(--a2);font-weight:700">${fmtINR(v.paid)}</td><td style="color:var(--a4)">${fmtINR(v.due)}</td></tr>`).join('')}
+    </tbody></table>`;
+}
+
+// ── TRENDS TAB ─────────────────────────────────────────────────────────────────
+function renderTrendsTab(){
+  const monthly={};
+  FILTERED.forEach(s=>{const m=s.seminar_month||'?';if(!monthly[m])monthly[m]={att:0,sb:0,conv:0,paid:0,seminars:new Set()};if(s.attended)monthly[m].att++;if(s.seat_booked)monthly[m].sb++;if(s.converted){monthly[m].conv++;monthly[m].paid+=s.primary_paid;}monthly[m].seminars.add(s.seminar_date+'||'+s.place);});
+  const mk=Object.keys(monthly).filter(k=>k!=='?').sort();
+  const last=mk.length?monthly[mk[mk.length-1]]:{att:0,conv:0,paid:0,sb:0};
+  const prev=mk.length>1?monthly[mk[mk.length-2]]:{att:0,conv:0,paid:0,sb:0};
+  const revChg=prev.paid>0?((last.paid-prev.paid)/prev.paid*100).toFixed(1):0;
+  const convChg=prev.conv>0?((last.conv-prev.conv)/prev.conv*100).toFixed(1):0;
+  document.getElementById('trendsKpiGrid').innerHTML=[
+    {l:'Latest Month Attended',v:fmtN(last.att||0),s:mk.length?fmtYM(mk[mk.length-1]):'',ic:'👥',c:'#6366f1'},
+    {l:'Latest Month Converted',v:fmtN(last.conv||0),s:mk.length?fmtYM(mk[mk.length-1]):'',ic:'✅',c:'#10b981'},
+    {l:'MoM Conv Change',v:(convChg>=0?'▲':'▼')+Math.abs(convChg)+'%',s:'vs previous month',ic:'📈',c:convChg>=0?'#10b981':'#ef4444'},
+    {l:'Latest Month Revenue',v:fmtINR(last.paid||0),s:mk.length?fmtYM(mk[mk.length-1]):'',ic:'💰',c:'#f59e0b'},
+    {l:'MoM Rev Change',v:(revChg>=0?'▲':'▼')+Math.abs(revChg)+'%',s:'vs previous month',ic:'📉',c:revChg>=0?'#10b981':'#ef4444'},
+    {l:'Best Month Rev',v:fmtINR(Math.max(...mk.map(k=>monthly[k].paid),0)),s:mk.length?fmtYM(mk.reduce((a,b)=>monthly[a].paid>monthly[b].paid?a:b,mk[0])):'',ic:'🏆',c:'#f59e0b'},
+  ].map(k=>`<div class="kpi" style="--kc:${k.c}"><div class="ki">${k.ic}</div><div class="kl">${k.l}</div><div class="kv">${k.v}</div><div class="ks">${k.s}</div></div>`).join('');
+
+  mc('chartTrendMain',{type:'bar',data:{labels:mk.map(fmtYM),datasets:[
+    {label:'Attended',   data:mk.map(k=>monthly[k].att), backgroundColor:'rgba(99,102,241,.65)',borderRadius:3,yAxisID:'y'},
+    {label:'Seat Booked',data:mk.map(k=>monthly[k].sb),  backgroundColor:'rgba(6,182,212,.6)',  borderRadius:3,yAxisID:'y'},
+    {label:'Converted',  data:mk.map(k=>monthly[k].conv),backgroundColor:'rgba(16,185,129,.9)', borderRadius:3,yAxisID:'y'},
+    {label:'Conv Rate%', data:mk.map(k=>monthly[k].sb?+(monthly[k].conv/monthly[k].sb*100).toFixed(1):0),type:'line',borderColor:'#f59e0b',backgroundColor:'transparent',tension:.4,pointRadius:4,yAxisID:'y1'},
+  ]},options:{plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true},y1:{position:'right',beginAtZero:true,ticks:{callback:v=>v+'%'},grid:{drawOnChartArea:false}}}}});
+
+  mc('chartTrendRev',{type:'line',data:{labels:mk.map(fmtYM),datasets:[{label:'Revenue',data:mk.map(k=>monthly[k].paid),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.12)',fill:true,tension:.4,pointRadius:4}]},options:{plugins:{legend:{position:'bottom'}},scales:{x:{},y:{ticks:{callback:v=>fmtINR(v)}}}}});
+
+  mc('chartTrendConv',{type:'line',data:{labels:mk.map(fmtYM),datasets:[
+    {label:'Conv Rate% (SB→Paid)',data:mk.map(k=>monthly[k].sb?+(monthly[k].conv/monthly[k].sb*100).toFixed(1):0),borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.1)',fill:true,tension:.4,pointRadius:4},
+  ]},options:{plugins:{legend:{position:'bottom'}},scales:{x:{},y:{beginAtZero:true,ticks:{callback:v=>v+'%'}}}}});
+}
+
+// ── PAGINATION ─────────────────────────────────────────────────────────────────
+function renderPag(id,total,perPage,current,onPage){
+  const tp=Math.ceil(total/perPage);if(tp<=1){document.getElementById(id).innerHTML='';return;}
+  let h='',win=2;
+  h+=`<button class="pg-btn" onclick="(${onPage.toString()})(${Math.max(1,current-1)})" ${current===1?'disabled':''}>‹</button>`;
+  for(let p=1;p<=tp;p++){if(p===1||p===tp||Math.abs(p-current)<=win)h+=`<button class="pg-btn ${p===current?'active':''}" onclick="(${onPage.toString()})(${p})">${p}</button>`;else if(Math.abs(p-current)===win+1)h+=`<span class="pg-info">…</span>`;}
+  h+=`<button class="pg-btn" onclick="(${onPage.toString()})(${Math.min(tp,current+1)})" ${current===tp?'disabled':''}>›</button>`;
+  document.getElementById(id).innerHTML=h;
+}
+
+// ── EXPORTS ───────────────────────────────────────────────────────────────────
+function exportStudentsCSV(){
+  const h=['Name','Mobile','Location','Date','Session','Trainer','Attended','Seat Booked','Seat Amt','Converted','Primary Course','Primary Paid','Primary Due','Primary Status','Mode','Sales Rep','Advanced Courses','Advanced Paid','Advanced Due','Total Paid','Total Due','Lead Type','Source','Stage','Owner','Attempted','Email','Remarks','Match Reason'];
+  const rows=FILTERED.map(s=>{
+    const advNames=Array.isArray(s.additional_courses)?s.additional_courses.map(a=>a.course||a).join(' | '):'';
+    const advPaid=Array.isArray(s.additional_courses)?s.additional_courses.reduce((t,a)=>t+(a.paid||0),0):0;
+    const advDue=Array.isArray(s.additional_courses)?s.additional_courses.reduce((t,a)=>t+(a.due||0),0):0;
+    return[s.name,s.mobile,s.place,s.seminar_date,s.session,s.trainer,
+      s.attended?'Yes':'No',s.seat_booked?'Yes':'No',s.seat_book_amount,
+      (s.converted)?'Yes':'No',
+      s.primary_course,s.primary_paid,s.primary_due,s.primary_status,s.primary_mode,s.sales_rep,
+      advNames,advPaid,advDue,
+      (s.primary_paid||0)+advPaid,(s.primary_due||0)+advDue,
+      s.webinar_type,s.lead_source,s.stage_name,s.lead_owner,s.attempted,s.email,s.remarks,s.match_reason];
+  });
+  downloadCSV([h,...rows],'invesmate_students_'+new Date().toISOString().slice(0,10)+'.csv');
+}
+function exportConvertedCSV(){
+  const conv=FILTERED.filter(s=>s.converted);
+  const h=['Name','Mobile','Location','Seminar Date','Course','Order Date','Paid','Due','Mode','Status','Sales Rep','Additional Courses','Lead Type','Source','Stage','Owner'];
+  const rows=conv.map(s=>[s.name,s.mobile,s.place,s.seminar_date,s.primary_course,s.primary_order_date,s.primary_paid,s.primary_due,s.primary_mode,s.primary_status,s.sales_rep,Array.isArray(s.additional_courses)?s.additional_courses.join('|'):'',s.webinar_type,s.lead_source,s.stage_name,s.lead_owner]);
+  downloadCSV([h,...rows],'invesmate_converted_'+new Date().toISOString().slice(0,10)+'.csv');
+}
+function exportOrdersCSV(){
+  const h=['Name','Mobile','Location','Seminar Date','Course Type','Course','Order Date','Paid','Due','GST','Mode','Status','Sales Rep','Is Primary','Order ID','Is Paid'];
+  const rows=FILTERED_ORDERS.filter(o=>o.paid_amount>0).map(o=>[o.name,o.mobile,o.place,o.seminar_date,o.is_primary?'PRIMARY (PTI)':'ADVANCED',o.course,o.order_date,o.paid_amount,o.total_due,o.total_gst,o.payment_mode,o.status,o.sales_rep,o.is_primary?'Yes':'No',o.order_id,'Yes']);
+  downloadCSV([h,...rows],'invesmate_orders_paid_'+new Date().toISOString().slice(0,10)+'.csv');
+}
+function exportSalesRepCSV(){
+  const srMap={};FILTERED.filter(s=>s.converted&&s.sales_rep&&s.sales_rep!=='nan').forEach(s=>{const r=s.sales_rep;if(!srMap[r])srMap[r]={deals:0,revenue:0,due:0,active:0};srMap[r].deals++;srMap[r].revenue+=s.primary_paid;srMap[r].due+=s.primary_due;if(s.primary_status==='Active')srMap[r].active++;});
+  const totalRev=Object.values(srMap).reduce((s,v)=>s+v.revenue,0)||1;
+  const h=['Rank','Sales Rep','Deals','Revenue','Due','Active','Active%','Avg Deal','Rev Share%'];
+  const rows=Object.entries(srMap).sort((a,b)=>b[1].revenue-a[1].revenue).map(([n,v],i)=>[i+1,n,v.deals,Math.round(v.revenue),Math.round(v.due),v.active,(v.active/v.deals*100).toFixed(1),Math.round(v.revenue/v.deals),(v.revenue/totalRev*100).toFixed(2)]);
+  downloadCSV([h,...rows],'invesmate_sales_rep_'+new Date().toISOString().slice(0,10)+'.csv');
+}
+function exportLocationCSV(){
+  const locMap={};FILTERED.forEach(s=>{const l=s.place||'?';if(!locMap[l])locMap[l]={total:0,att:0,sb:0,conv:0,paid:0,due:0};locMap[l].total++;if(s.attended)locMap[l].att++;if(s.seat_booked)locMap[l].sb++;if(s.converted){locMap[l].conv++;locMap[l].paid+=s.primary_paid;locMap[l].due+=s.primary_due;}});
+  const h=['Location','In List','Attended','Seat Booked','Converted','Conv Rate%','Revenue','Due'];
+  const rows=Object.entries(locMap).sort((a,b)=>b[1].paid-a[1].paid).map(([l,v])=>[l,v.total,v.att,v.sb,v.conv,(v.conv/(v.sb||1)*100).toFixed(1),Math.round(v.paid),Math.round(v.due)]);
+  downloadCSV([h,...rows],'invesmate_locations_'+new Date().toISOString().slice(0,10)+'.csv');
+}
+function exportSeminarsCSV(){
+  const semMap={};FILTERED.forEach(s=>{const k=s.seminar_date+'||'+s.place;if(!semMap[k])semMap[k]={date:s.seminar_date,place:s.place,trainer:s.trainer,session:s.session,total:0,att:0,sb:0,conv:0,rev:0,due:0};const m=semMap[k];m.total++;if(s.attended)m.att++;if(s.seat_booked)m.sb++;if(s.converted){m.conv++;m.rev+=s.primary_paid;m.due+=s.primary_due;}});
+  const h=['Date','Location','Trainer','Session','In List','Attended','Seat Booked','Converted','SB→Conv%','Revenue','Due'];
+  const rows=Object.values(semMap).sort((a,b)=>a.date.localeCompare(b.date)).map(s=>[s.date,s.place,s.trainer,s.session,s.total,s.att,s.sb,s.conv,(s.conv/(s.sb||1)*100).toFixed(1),Math.round(s.rev),Math.round(s.due)]);
+  downloadCSV([h,...rows],'invesmate_seminars_conducted_'+new Date().toISOString().slice(0,10)+'.csv');
+}
+function exportLeadTableCSV(){
+  const search=(document.getElementById('leadSearch')?.value||'').toLowerCase();
+  const rows=FILTERED.filter(s=>!search||[s.name,s.mobile,s.place,s.lead_source,s.stage_name,s.lead_owner].join(' ').toLowerCase().includes(search));
+  const h=['Name','Mobile','Location','Date','Converted','Paid','Lead Type','Source','Lead Status','Stage','Owner','Attempted','Email','Remarks'];
+  const data=rows.map(s=>[s.name,s.mobile,s.place,s.seminar_date,(s.converted)?'Yes':'No',s.primary_paid,s.webinar_type,s.lead_source,s.lead_status,s.stage_name,s.lead_owner,s.attempted,s.email,s.remarks]);
+  downloadCSV([h,...data],'invesmate_lead_table_'+new Date().toISOString().slice(0,10)+'.csv');
+}
+
+// ── TAB SWITCH ────────────────────────────────────────────────────────────────
+function switchTab(name,el){
+  document.querySelectorAll('.ntab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name)?.classList.add('active');
+  if(el)el.classList.add('active');
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+if(typeof STUDENTS==='undefined'||!STUDENTS||!STUDENTS.length){
+  document.body.innerHTML='<div style="padding:60px;text-align:center;color:#94a3b8;font-family:DM Sans,sans-serif;background:#08101d;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="font-size:48px;margin-bottom:16px">🏢</div><h2 style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:#e2e8f0;margin-bottom:12px">No Offline Data Available</h2><p style="font-size:13px;max-width:480px;line-height:1.7">Upload <strong style=\'color:#e2e8f0\'>Seminar Updated Sheet</strong>, <strong style=\'color:#e2e8f0\'>Conversion List</strong>, and <strong style=\'color:#e2e8f0\'>Leads Report</strong> on the Home page to populate this dashboard.</p></div>';
+}else{
+  initFilters();
+  FILTERED=[...STUDENTS];
+  FILTERED_ORDERS=[...(ORDERS||[])];
+  document.getElementById('fcount').textContent=FILTERED.length+' students';
+  renderAll();
+}
+</script>
+</body>
+</html>
